@@ -1,0 +1,112 @@
+[build-system]
+requires = ["hatchling>=1.27,<2"]
+build-backend = "hatchling.build"
+
+[project]
+name = "core-data-platform"
+version = "0.1.0"
+description = "Core Data Model Platform — Phase 0 / Increment P0-I1 foundation skeleton"
+readme = "README.md"
+requires-python = ">=3.12,<3.13"
+license = { text = "Proprietary" }
+authors = [{ name = "Core Data Model Platform Team" }]
+dependencies = [
+  "fastapi==0.141.1",
+  "uvicorn[standard]==0.53.0",
+  "pydantic==2.13.5",
+  "pydantic-settings>=2.14,<2.15",
+  "sqlalchemy==2.0.54",
+  "psycopg[binary,pool]==3.3.5",
+  "alembic==1.19.1",
+  "structlog>=26.1,<27",
+]
+
+[dependency-groups]
+dev = [
+  "pytest==9.0.3",
+  "testcontainers[postgres]==4.15.0",
+  "hypothesis==6.168.0",
+  "httpx>=0.28,<1",
+  "ruff==0.16.3",
+  "mypy==2.3.1",
+  "import-linter==2.15",
+  "pip-audit",
+  "bandit",
+  "cyclonedx-bom==7.3.1",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/core_platform"]
+
+[tool.uv]
+default-groups = ["dev"]
+
+[tool.pytest.ini_options]
+addopts = "-ra --strict-markers"
+testpaths = ["tests"]
+markers = [
+  "integration: requires PostgreSQL/Docker",
+  "compatibility: PostgreSQL 12/18 compatibility matrix",
+  "architecture: architecture fitness rules",
+]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "SIM", "RUF", "S"]
+ignore = [
+  "S101", # assert is expected in tests
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*.py" = ["S101", "S105", "S106", "S603", "S607"]
+"migrations/**/*.py" = ["E501"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "lf"
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+warn_unreachable = true
+no_implicit_reexport = true
+pretty = true
+show_error_codes = true
+packages = ["core_platform"]
+mypy_path = ["src"]
+plugins = ["pydantic.mypy"]
+
+[[tool.mypy.overrides]]
+module = ["testcontainers.*"]
+ignore_missing_imports = true
+
+[tool.importlinter]
+root_package = "core_platform"
+include_external_packages = true
+
+[[tool.importlinter.contracts]]
+name = "Foundation is framework-independent"
+type = "forbidden"
+source_modules = ["core_platform.foundation"]
+forbidden_modules = [
+  "fastapi",
+  "pydantic",
+  "sqlalchemy",
+  "psycopg",
+  "alembic",
+  "structlog",
+  "asyncio",
+  "core_platform.infrastructure",
+  "core_platform.host",
+]
+
+[[tool.importlinter.contracts]]
+name = "Infrastructure does not depend on host"
+type = "forbidden"
+source_modules = ["core_platform.infrastructure"]
+forbidden_modules = ["core_platform.host"]
