@@ -1,0 +1,131 @@
+from __future__ import annotations
+
+from datetime import UTC, datetime
+from uuid import UUID
+
+from core_platform.foundation.errors import AuthenticationError, AuthorizationError, ValidationError
+from core_platform.foundation.identifiers import CorrelationId
+from core_platform.platform_kernel.actor import ActorStatus
+from core_platform.platform_kernel.context import ExecutionContext
+from core_platform.platform_kernel.context_trust import ContextTrustRepository
+from core_platform.platform_kernel.identity import TokenAuthenticator
+from core_platform.platform_kernel.ids import TenantId
+from core_platform.platform_kernel.policy import CapabilityGrantPdp, PolicyRequest
+from core_platform.platform_kernel.tenant import TenantStatus
+
+
+class ContextTrustService:
+    def __init__(
+        self,
+        authenticator: TokenAuthenticator,
+        repository: ContextTrustRepository,
+        pdp: CapabilityGrantPdp,
+        *,
+        environment: str,
+    ) -> None:
+        self._authenticator = authenticator
+        self._repository = repository
+        self._pdp = pdp
+        self._environment = environment
+
+    async def authorize(
+        self,
+        *,
+        token: str,
+        tenant_selector: str | None,
+        capability_code: str,
+        correlation_id: CorrelationId,
+    ) -> ExecutionContext:
+        if not token:
+            raise AuthenticationError(
+                "AUTH.TOKEN.REQUIRED",
+                "Bearer access token is required",
+                correlation_id=str(correlation_id),
+            )
+        authentication = await self._authenticator.authenticate(token)
+        actor = await self._repository.resolve_actor(authentication.issuer, authentication.subject)
+        if actor is None:
+            raise AuthorizationError(
+                "ACTOR.IDENTITY.NOT_REGISTERED",
+                "Authenticated identity is not registered",
+                correlation_id=str(correlation_id),
+            )
+        if actor.status is not ActorStatus.ACTIVE:
+            raise AuthorizationError(
+                "ACTOR.NOT.ACTIVE",
+                "Actor is not active",
+                correlation_id=str(correlation_id),
+            )
+
+        tenant_id = self._parse_tenant_selector(tenant_selector, correlation_id)
+        tenant = await self._repository.get_tenant(tenant_id)
+        if tenant is None:
+            raise AuthorizationError(
+                "TENANT.ACCESS.DENIED",
+                "Tenant access denied",
+                correlation_id=str(correlation_id),
+            )
+        if tenant.status is not TenantStatus.ACTIVE:
+            raise AuthorizationError(
+                "TENANT.NOT.ACTIVE",
+                "Tenant is not active",
+                correlation_id=str(correlation_id),
+            )
+
+        instant = datetime.now(UTC)
+        membership = await self._repository.get_membership(tenant_id, actor.actor_id)
+        if membership is None or not membership.is_active_at(instant):
+            raise AuthorizationError(
+                "TENANT.ACCESS.DENIED",
+                "Tenant access denied",
+                correlation_id=str(correlation_id),
+            )
+
+        request = PolicyRequest(
+            tenant_id=tenant_id,
+            actor_id=actor.actor_id,
+            capability=capability_code,
+            environment=self._environment,
+            authentication_context=authentication,
+        )
+        grant = await self._repository.get_capability_grant(
+            tenant_id, actor.actor_id, capability_code
+        )
+        decision = self._pdp.decide(request, grant, now=instant)
+        if not decision.allowed:
+            raise AuthorizationError(
+                "AUTHZ.CAPABILITY.DENIED",
+                "Capability denied",
+                details={"capability": capability_code, "reason": decision.reason_code},
+                correlation_id=str(correlation_id),
+            )
+
+        return ExecutionContext(
+            tenant_id=tenant_id,
+            actor_id=actor.actor_id,
+            actor_type=actor.actor_type,
+            authentication=authentication,
+            correlation_id=correlation_id,
+        )
+
+    async def list_effective_capabilities(self, context: ExecutionContext) -> tuple[str, ...]:
+        return await self._repository.list_active_capability_codes(
+            context.tenant_id, context.actor_id
+        )
+
+    @staticmethod
+    def _parse_tenant_selector(selector: str | None, correlation_id: CorrelationId) -> TenantId:
+        if selector is None or not selector.strip():
+            raise ValidationError(
+                "TENANT.CONTEXT.REQUIRED",
+                "Tenant context is required",
+                correlation_id=str(correlation_id),
+            )
+        try:
+            return TenantId(UUID(selector))
+        except ValueError as exc:
+            raise ValidationError(
+                "TENANT.ID.INVALID",
+                "Tenant identifier is invalid",
+                correlation_id=str(correlation_id),
+            ) from exc

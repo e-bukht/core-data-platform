@@ -1,1 +1,1 @@
-EXPECTED_ALEMBIC_REVISION = "0001_bootstrap_platform"
+EXPECTED_ALEMBIC_REVISION = "0002_context_trust"

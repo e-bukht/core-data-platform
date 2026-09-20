@@ -4,8 +4,8 @@ build-backend = "hatchling.build"
 
 [project]
 name = "core-data-platform"
-version = "0.1.0"
-description = "Core Data Model Platform — Phase 0 / Increment P0-I1 foundation skeleton"
+version = "0.2.0"
+description = "Core Data Model Platform — Phase 0 / Increment P0-I2 Context & Trust"
 readme = "README.md"
 requires-python = ">=3.12,<3.13"
 license = { text = "Proprietary" }
@@ -19,6 +19,8 @@ dependencies = [
   "psycopg[binary,pool]==3.3.5",
   "alembic==1.19.1",
   "structlog>=26.1,<27",
+  "PyJWT[crypto]==2.14.0",
+  "httpx==0.28.1",
 ]
 
 [dependency-groups]
@@ -26,13 +28,11 @@ dev = [
   "pytest==9.0.3",
   "testcontainers[postgres]==4.15.0",
   "hypothesis==6.168.0",
-  "httpx>=0.28,<1",
   "ruff==0.16.3",
   "mypy==2.3.1",
   "import-linter==2.15",
   "pip-audit",
   "bandit",
-  "cyclonedx-bom==7.3.1",
 ]
 
 [tool.hatch.build.targets.wheel]
@@ -48,6 +48,7 @@ markers = [
   "integration: requires PostgreSQL/Docker",
   "compatibility: PostgreSQL 12/18 compatibility matrix",
   "architecture: architecture fitness rules",
+  "identity: requires the local Keycloak reference provider",
 ]
 
 [tool.ruff]
@@ -62,8 +63,9 @@ ignore = [
 ]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/**/*.py" = ["S101", "S105", "S106", "S603", "S607"]
-"migrations/**/*.py" = ["E501"]
+"tests/**/*.py" = ["S101", "S105", "S106", "S603", "S607", "S608"]
+"migrations/**/*.py" = ["E501", "S608"]
+"scripts/**/*.py" = ["S603", "S607"]
 
 [tool.ruff.format]
 quote-style = "double"
@@ -100,10 +102,38 @@ forbidden_modules = [
   "psycopg",
   "alembic",
   "structlog",
+  "jwt",
+  "httpx",
   "asyncio",
+  "core_platform.application",
+  "core_platform.infrastructure",
+  "core_platform.host",
+  "core_platform.platform_kernel",
+]
+
+[[tool.importlinter.contracts]]
+name = "Platform kernel is framework-independent"
+type = "forbidden"
+source_modules = ["core_platform.platform_kernel"]
+forbidden_modules = [
+  "fastapi",
+  "pydantic",
+  "sqlalchemy",
+  "psycopg",
+  "alembic",
+  "structlog",
+  "jwt",
+  "httpx",
+  "core_platform.application",
   "core_platform.infrastructure",
   "core_platform.host",
 ]
+
+[[tool.importlinter.contracts]]
+name = "Application does not depend on host or infrastructure"
+type = "forbidden"
+source_modules = ["core_platform.application"]
+forbidden_modules = ["core_platform.host", "core_platform.infrastructure"]
 
 [[tool.importlinter.contracts]]
 name = "Infrastructure does not depend on host"

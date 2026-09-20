@@ -2,14 +2,13 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 if [[ ! -f uv.lock ]]; then
-  echo "[bootstrap] uv.lock absent: generating with the validated Python 3.12 constraint..."
+  echo "[bootstrap] uv.lock absent: generate it on a connected Python 3.12 environment."
   uv lock --python 3.12
 fi
 uv sync --frozen
-if [[ ! -f .env ]]; then
-  cp .env.example .env
-fi
+[[ -f .env ]] || cp .env.example .env
 docker compose -f deploy/local/compose.yaml up -d postgres18
 uv run alembic upgrade head
+uv run python scripts/bootstrap_context_trust.py
 ./scripts/check.sh
-echo "P0-I1 bootstrap complete. Run ./scripts/dev.sh"
+echo "P0-I2 bootstrap complete. Optional: start Keycloak with --profile identity."

@@ -1,3 +1,3 @@
 #!/usr/bin/env bash
 set -euo pipefail
-uv run pytest -m "integration or compatibility" tests/integration
+uv run pytest tests/integration/test_postgres_compatibility.py tests/integration/test_rls.py -v

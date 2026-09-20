@@ -1,15 +1,13 @@
 from __future__ import annotations
 
 import asyncio
-import os
-import subprocess
-import sys
-from pathlib import Path
 
 import pytest
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import create_async_engine
 from testcontainers.community.postgres import PostgresContainer
+
+from tests.integration.db_support import admin_url, provision_roles, run_alembic
 
 
 async def _select_one(url: str) -> int:
@@ -25,13 +23,6 @@ async def _select_one(url: str) -> int:
 @pytest.mark.integration
 def test_postgresql_18_smoke_and_migration() -> None:
     with PostgresContainer("postgres:18") as postgres:
-        sync_url = postgres.get_connection_url().replace("psycopg2", "psycopg")
-        async_url = sync_url.replace("postgresql://", "postgresql+psycopg://")
-        env = os.environ | {"CORE_PLATFORM_DATABASE_URL": async_url}
-        subprocess.run(
-            [sys.executable, "-m", "alembic", "upgrade", "head"],
-            cwd=Path(__file__).parents[2],
-            env=env,
-            check=True,
-        )
-        assert asyncio.run(_select_one(async_url)) == 1
+        migration_url, runtime_url = provision_roles(admin_url(postgres))
+        run_alembic(migration_url, runtime_url)
+        assert asyncio.run(_select_one(runtime_url)) == 1

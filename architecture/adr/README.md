@@ -1,18 +1,16 @@
 # Architecture Decision Records
 
-This directory stores implementation ADRs derived from the validated architecture documents.
+P0-I1 accepted decisions remain in force. P0-I2 adds:
 
-Initial accepted decisions:
-
-- I1-PY-ADR-001 — CPython 3.12 runtime
-- I1-PY-ADR-002 — uv dependency/environment manager
-- I1-PY-ADR-003 — FastAPI is an HTTP adapter, not the domain framework
-- I1-PY-ADR-004 — pure synchronous domain
-- I1-PY-ADR-005 — SQLAlchemy Core-first
-- I1-PY-ADR-006 — Alembic is the migration authority
-- I1-PY-ADR-007 — Psycopg 3 PostgreSQL driver
-- I1-PY-ADR-008 — PostgreSQL 12 compatibility floor / PostgreSQL 18 reference
-- I1-PY-ADR-009 — async at I/O boundaries only
-- I1-PY-ADR-010 — pytest + Testcontainers
-- I1-PY-ADR-011 — Ruff + mypy strict + Import Linter
-- I1-PY-ADR-012 — one deployable package, src-layout monorepo
+- I2-ADR-001 — external IdP; platform is an OAuth2/OIDC resource server
+- I2-ADR-002 — token claims are not business authorization
+- I2-ADR-003 — `(issuer, subject)` is the external identity key
+- I2-ADR-004 — Actor is distinct from Party
+- I2-ADR-005 — tenant selector is untrusted input
+- I2-ADR-006 — `contextvars` for ExecutionContext
+- I2-ADR-007 — in-process default-deny PDP
+- I2-ADR-008 — RLS mandatory for tenant-scoped data
+- I2-ADR-009 — transaction-local DB tenant context
+- I2-ADR-010 — migrator role distinct from runtime role
+- I2-ADR-011 — RS256 allowlist initially
+- I2-ADR-012 — no Actor auto-provisioning from unknown tokens

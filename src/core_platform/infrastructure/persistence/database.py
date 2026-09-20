@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from dataclasses import dataclass
+from uuid import UUID
 
 from sqlalchemy import text
-from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
+from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine, create_async_engine
 
 from core_platform.infrastructure.persistence.schema import EXPECTED_ALEMBIC_REVISION
 
@@ -21,16 +24,36 @@ class DatabaseReadiness:
 
 
 class Database:
-    def __init__(self, url: str) -> None:
+    def __init__(
+        self,
+        url: str,
+        *,
+        pool_size: int = 5,
+        max_overflow: int = 5,
+    ) -> None:
         self._engine: AsyncEngine = create_async_engine(
             url,
             pool_pre_ping=True,
-            pool_size=5,
-            max_overflow=5,
+            pool_size=pool_size,
+            max_overflow=max_overflow,
         )
 
     async def close(self) -> None:
         await self._engine.dispose()
+
+    @asynccontextmanager
+    async def transaction(self) -> AsyncIterator[AsyncConnection]:
+        async with self._engine.connect() as connection, connection.begin():
+            yield connection
+
+    @asynccontextmanager
+    async def tenant_transaction(self, tenant_id: UUID) -> AsyncIterator[AsyncConnection]:
+        async with self._engine.connect() as connection, connection.begin():
+            await connection.execute(
+                text("SELECT set_config('app.current_tenant_id', :tenant_id, true)"),
+                {"tenant_id": str(tenant_id)},
+            )
+            yield connection
 
     async def readiness(self) -> DatabaseReadiness:
         try:

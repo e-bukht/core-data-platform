@@ -30,5 +30,9 @@ class CorrelationId:
     def new(cls) -> CorrelationId:
         return cls(new_uuid7())
 
+    @classmethod
+    def parse(cls, raw: str) -> CorrelationId:
+        return cls(UUID(raw))
+
     def __str__(self) -> str:
         return str(self.value)

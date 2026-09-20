@@ -2,33 +2,51 @@ services:
   postgres18:
     image: postgres:18
     environment:
+      # Keep the P0-I1 local bootstrap identity so an existing pg18-data volume remains usable.
+      # P0-I2 application traffic never uses this account; bootstrap_db_roles.py creates the
+      # dedicated migrator/runtime identities for upgraded volumes.
       POSTGRES_DB: coredata
-      POSTGRES_USER: coredata
-      POSTGRES_PASSWORD: local-only
+      POSTGRES_USER: ${CORE_PLATFORM_PG_ADMIN_USER:-coredata}
+      POSTGRES_PASSWORD: ${CORE_PLATFORM_PG_ADMIN_PASSWORD:-local-only}
     ports:
-      - "5434:5432"
+      - "${CORE_PLATFORM_PG18_PORT:-5434}:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U coredata -d coredata"]
+      test: ["CMD-SHELL", "pg_isready -U ${CORE_PLATFORM_PG_ADMIN_USER:-coredata} -d coredata"]
       interval: 2s
       timeout: 3s
       retries: 20
     volumes:
       - pg18-data:/var/lib/postgresql
+      - ./postgres/init:/docker-entrypoint-initdb.d:ro
 
   postgres12:
     image: postgres:12.22
     profiles: ["compat"]
     environment:
       POSTGRES_DB: coredata
-      POSTGRES_USER: coredata
-      POSTGRES_PASSWORD: local-only
+      POSTGRES_USER: ${CORE_PLATFORM_PG_ADMIN_USER:-coredata}
+      POSTGRES_PASSWORD: ${CORE_PLATFORM_PG_ADMIN_PASSWORD:-local-only}
     ports:
-      - "5435:5432"
+      - "${CORE_PLATFORM_PG12_PORT:-5435}:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U coredata -d coredata"]
+      test: ["CMD-SHELL", "pg_isready -U ${CORE_PLATFORM_PG_ADMIN_USER:-coredata} -d coredata"]
       interval: 2s
       timeout: 3s
       retries: 20
+    volumes:
+      - ./postgres/init:/docker-entrypoint-initdb.d:ro
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.7.4
+    profiles: ["identity"]
+    command: ["start-dev", "--import-realm"]
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: local-admin-only
+    ports:
+      - "${CORE_PLATFORM_KEYCLOAK_PORT:-8180}:8080"
+    volumes:
+      - ./keycloak/core-data-platform-realm.json:/opt/keycloak/data/import/core-data-platform-realm.json:ro
 
 volumes:
   pg18-data:

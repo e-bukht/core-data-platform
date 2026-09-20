@@ -26,15 +26,17 @@ jobs:
       - run: uv run ruff format --check .
       - run: uv run mypy src tests
       - run: uv run lint-imports
-      - run: uv run pytest -m "not integration and not compatibility"
+      - run: uv run pytest -m "not integration and not compatibility and not identity"
       - run: uv run pip-audit
       - run: uv run bandit -q -r src
-      - name: Generate CycloneDX SBOM
-        run: mkdir -p .sbom && uv run cyclonedx-py environment --output-format JSON --output-file .sbom/sbom.json
+      - name: Generate runtime CycloneDX SBOM
+        run: mkdir -p .sbom && uv export --format cyclonedx1.5 --frozen --no-dev --output-file .sbom/runtime.cdx.json
+      - name: Generate full CycloneDX SBOM
+        run: uv export --format cyclonedx1.5 --frozen --all-groups --output-file .sbom/full.cdx.json
       - uses: actions/upload-artifact@v6
         with:
           name: sbom
-          path: .sbom/sbom.json
+          path: .sbom/*.json
 
   postgres-matrix:
     runs-on: ubuntu-latest
@@ -48,18 +50,22 @@ jobs:
         image: postgres:${{ matrix.postgres }}
         env:
           POSTGRES_DB: coredata
-          POSTGRES_USER: coredata
-          POSTGRES_PASSWORD: ci-only
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: ci-admin-only
         ports:
           - 5432:5432
         options: >-
-          --health-cmd "pg_isready -U coredata -d coredata"
+          --health-cmd "pg_isready -U postgres -d coredata"
           --health-interval 5s
           --health-timeout 5s
           --health-retries 20
     env:
       CORE_PLATFORM_ENVIRONMENT: ci
-      CORE_PLATFORM_DATABASE_URL: postgresql+psycopg://coredata:ci-only@localhost:5432/coredata
+      CORE_PLATFORM_ADMIN_DATABASE_URL: postgresql+psycopg://postgres:ci-admin-only@localhost:5432/coredata
+      CORE_PLATFORM_MIGRATION_DATABASE_URL: postgresql+psycopg://coredata_migrator:ci-migrator-only@localhost:5432/coredata
+      CORE_PLATFORM_DATABASE_URL: postgresql+psycopg://coredata_runtime:ci-runtime-only@localhost:5432/coredata
+      CORE_PLATFORM_OIDC_ISSUER: http://localhost:8180/realms/core-data-platform
+      CORE_PLATFORM_OIDC_AUDIENCE: core-data-api
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v7
@@ -70,5 +76,21 @@ jobs:
           version: "0.12.15"
       - run: test -f uv.lock
       - run: uv sync --frozen
+      - run: uv run python scripts/bootstrap_db_roles.py
       - run: uv run alembic upgrade head
-      - run: uv run pytest tests/integration/test_configured_database.py
+      - run: uv run pytest tests/integration/test_configured_database.py -v
+
+  tenant-isolation:
+    runs-on: ubuntu-latest
+    needs: quality
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - uses: astral-sh/setup-uv@v10
+        with:
+          version: "0.12.15"
+      - run: test -f uv.lock
+      - run: uv sync --frozen
+      - run: uv run pytest tests/integration/test_postgres_compatibility.py tests/integration/test_rls.py -v
