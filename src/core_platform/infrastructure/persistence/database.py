@@ -42,6 +42,11 @@ class Database:
         await self._engine.dispose()
 
     @asynccontextmanager
+    async def open_connection(self) -> AsyncIterator[AsyncConnection]:
+        async with self._engine.connect() as connection:
+            yield connection
+
+    @asynccontextmanager
     async def transaction(self) -> AsyncIterator[AsyncConnection]:
         async with self._engine.connect() as connection, connection.begin():
             yield connection

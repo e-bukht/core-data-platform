@@ -18,7 +18,7 @@ def test_migrations_apply_on_supported_postgresql_matrix(image: str) -> None:
 @pytest.mark.integration
 @pytest.mark.compatibility
 @pytest.mark.parametrize("image", ["postgres:12.22", "postgres:18"])
-def test_existing_p0_i1_database_upgrades_to_p0_i2(image: str) -> None:
+def test_existing_p0_i1_database_upgrades_to_current_head(image: str) -> None:
     with PostgresContainer(image) as postgres:
         original_owner_url = admin_url(postgres)
         # Simulate the certified P0-I1 state: revision 0001 was applied by the

@@ -1,1 +1,1 @@
-EXPECTED_ALEMBIC_REVISION = "0002_context_trust"
+EXPECTED_ALEMBIC_REVISION = "0003_transaction_kernel"
