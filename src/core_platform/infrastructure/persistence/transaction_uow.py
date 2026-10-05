@@ -2,25 +2,34 @@ from __future__ import annotations
 
 from contextlib import AbstractAsyncContextManager
 from contextvars import ContextVar, Token
+from time import perf_counter
 from types import TracebackType
 
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncTransaction
 
+from core_platform.infrastructure.observability.metrics import (
+    InfrastructureMetrics,
+    NoopInfrastructureMetrics,
+    TransactionOutcome,
+)
 from core_platform.infrastructure.persistence.database import Database
+from core_platform.infrastructure.persistence.evidence_store import (
+    PostgresEvidenceRepository,
+)
 from core_platform.infrastructure.persistence.transaction_stores import (
     PostgresAuditStore,
     PostgresIdempotencyStore,
     PostgresInboxStore,
     PostgresOutboxStore,
 )
+from core_platform.platform_kernel.evidence import EvidenceRepository
 from core_platform.transaction_kernel.models import TransactionContext
 from core_platform.transaction_kernel.ports import (
     AuditStore,
     IdempotencyStore,
     InboxStore,
     OutboxStore,
-    UnitOfWork,
 )
 
 _ACTIVE_ROOT_UOW: ContextVar[bool] = ContextVar(
@@ -34,14 +43,19 @@ class PostgresUnitOfWork:
         self,
         database: Database,
         context: TransactionContext,
+        *,
+        metrics: InfrastructureMetrics | None = None,
     ) -> None:
         self._database = database
         self._context = context
+        self._metrics = metrics if metrics is not None else NoopInfrastructureMetrics()
 
         self._connection_context: AbstractAsyncContextManager[AsyncConnection] | None = None
         self._connection: AsyncConnection | None = None
         self._transaction: AsyncTransaction | None = None
         self._root_token: Token[bool] | None = None
+        self._started_at: float | None = None
+        self._metrics_completed = False
         self._used = False
 
         self._idempotency = PostgresIdempotencyStore(
@@ -51,12 +65,18 @@ class PostgresUnitOfWork:
         self._outbox = PostgresOutboxStore(
             self._require_connection,
             context,
+            metrics=self._metrics,
         )
         self._inbox = PostgresInboxStore(
             self._require_connection,
             context,
+            metrics=self._metrics,
         )
         self._audit = PostgresAuditStore(
+            self._require_connection,
+            context,
+        )
+        self._evidence = PostgresEvidenceRepository(
             self._require_connection,
             context,
         )
@@ -81,6 +101,10 @@ class PostgresUnitOfWork:
     def audit(self) -> AuditStore:
         return self._audit
 
+    @property
+    def evidence(self) -> EvidenceRepository:
+        return self._evidence
+
     async def __aenter__(self) -> PostgresUnitOfWork:
         if self._used:
             raise RuntimeError("UnitOfWork instances are single-use")
@@ -89,6 +113,8 @@ class PostgresUnitOfWork:
 
         self._used = True
         self._root_token = _ACTIVE_ROOT_UOW.set(True)
+        self._started_at = perf_counter()
+        self._metrics.record_transaction_started()
 
         try:
             connection_context = self._database.open_connection()
@@ -111,7 +137,10 @@ class PostgresUnitOfWork:
 
             return self
         except BaseException:
-            await self._abort_failed_enter()
+            try:
+                await self._abort_failed_enter()
+            finally:
+                self._record_transaction_completion("failed")
             raise
 
     async def __aexit__(
@@ -123,7 +152,16 @@ class PostgresUnitOfWork:
         try:
             transaction = self._transaction
             if transaction is not None and transaction.is_active:
-                await transaction.rollback()
+                try:
+                    await transaction.rollback()
+                except BaseException:
+                    self._record_transaction_completion("failed")
+                    raise
+                else:
+                    outcome: TransactionOutcome = (
+                        "failed" if exc_type is not None else "rolled_back"
+                    )
+                    self._record_transaction_completion(outcome)
         finally:
             self._transaction = None
             self._connection = None
@@ -143,13 +181,44 @@ class PostgresUnitOfWork:
 
     async def commit(self) -> None:
         transaction = self._require_transaction()
-        await transaction.commit()
+
+        try:
+            await transaction.commit()
+        except BaseException:
+            self._record_transaction_completion("failed")
+            raise
+
         self._transaction = None
+        self._record_transaction_completion("committed")
 
     async def rollback(self) -> None:
         transaction = self._require_transaction()
-        await transaction.rollback()
+
+        try:
+            await transaction.rollback()
+        except BaseException:
+            self._record_transaction_completion("failed")
+            raise
+
         self._transaction = None
+        self._record_transaction_completion("rolled_back")
+
+    def _record_transaction_completion(
+        self,
+        outcome: TransactionOutcome,
+    ) -> None:
+        if self._metrics_completed:
+            return
+
+        started_at = self._started_at
+        if started_at is None:
+            return
+
+        self._metrics_completed = True
+        self._metrics.record_transaction_completed(
+            outcome=outcome,
+            duration_seconds=perf_counter() - started_at,
+        )
 
     def _require_connection(self) -> AsyncConnection:
         connection = self._connection
@@ -197,14 +266,21 @@ class PostgresUnitOfWork:
 
 
 class PostgresUnitOfWorkFactory:
-    def __init__(self, database: Database) -> None:
+    def __init__(
+        self,
+        database: Database,
+        *,
+        metrics: InfrastructureMetrics | None = None,
+    ) -> None:
         self._database = database
+        self._metrics = metrics if metrics is not None else NoopInfrastructureMetrics()
 
     def create(
         self,
         context: TransactionContext,
-    ) -> UnitOfWork:
+    ) -> PostgresUnitOfWork:
         return PostgresUnitOfWork(
             self._database,
             context,
+            metrics=self._metrics,
         )

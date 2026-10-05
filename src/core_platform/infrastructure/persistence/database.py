@@ -6,7 +6,9 @@ from dataclasses import dataclass
 from uuid import UUID
 
 from sqlalchemy import text
+from sqlalchemy.engine import Engine
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine, create_async_engine
+from sqlalchemy.pool import QueuePool
 
 from core_platform.infrastructure.persistence.schema import EXPECTED_ALEMBIC_REVISION
 
@@ -23,6 +25,14 @@ class DatabaseReadiness:
         return self.reachable and self.migrated
 
 
+@dataclass(frozen=True, slots=True)
+class DatabasePoolSnapshot:
+    size: int
+    checked_in: int
+    checked_out: int
+    overflow: int
+
+
 class Database:
     def __init__(
         self,
@@ -36,6 +46,24 @@ class Database:
             pool_pre_ping=True,
             pool_size=pool_size,
             max_overflow=max_overflow,
+        )
+
+    @property
+    def instrumentation_engine(self) -> Engine:
+        """Expose the synchronous engine only to infrastructure instrumentation adapters."""
+        return self._engine.sync_engine
+
+    def pool_snapshot(self) -> DatabasePoolSnapshot:
+        pool = self._engine.sync_engine.pool
+
+        if not isinstance(pool, QueuePool):
+            raise RuntimeError("Database pool does not expose QueuePool metrics")
+
+        return DatabasePoolSnapshot(
+            size=pool.size(),
+            checked_in=pool.checkedin(),
+            checked_out=pool.checkedout(),
+            overflow=pool.overflow(),
         )
 
     async def close(self) -> None:

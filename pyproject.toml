@@ -21,6 +21,11 @@ dependencies = [
   "structlog>=26.1,<27",
   "PyJWT[crypto]==2.14.0",
   "httpx==0.28.1",
+  "opentelemetry-sdk==1.44.0",
+  "opentelemetry-exporter-otlp-proto-http==1.44.0",
+  "opentelemetry-instrumentation-fastapi==0.65b0",
+  "opentelemetry-instrumentation-sqlalchemy==0.65b0",
+  "cryptography==50.0.1",
 ]
 
 [dependency-groups]
@@ -109,6 +114,7 @@ forbidden_modules = [
   "core_platform.infrastructure",
   "core_platform.host",
   "core_platform.platform_kernel",
+  "core_platform.transaction_kernel",
 ]
 
 [[tool.importlinter.contracts]]
@@ -127,6 +133,7 @@ forbidden_modules = [
   "core_platform.application",
   "core_platform.infrastructure",
   "core_platform.host",
+  "core_platform.transaction_kernel",
 ]
 
 [[tool.importlinter.contracts]]

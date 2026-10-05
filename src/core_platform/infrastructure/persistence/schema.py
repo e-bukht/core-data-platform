@@ -1,1 +1,1 @@
-EXPECTED_ALEMBIC_REVISION = "0003_transaction_kernel"
+EXPECTED_ALEMBIC_REVISION = "0005_break_glass"

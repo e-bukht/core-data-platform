@@ -5,7 +5,10 @@ from logging.config import fileConfig
 from alembic import context
 from sqlalchemy import engine_from_config, pool
 
-from core_platform.host.settings import get_settings
+from core_platform.infrastructure.security.secret_catalog import (
+    MIGRATION_DATABASE_URL_SECRET,
+    build_environment_secret_provider,
+)
 
 config = context.config
 if config.config_file_name is not None:
@@ -15,7 +18,10 @@ target_metadata = None
 
 
 def database_url() -> str:
-    return get_settings().require_migration_database_url()
+    provider = build_environment_secret_provider()
+    return provider.get_secret(
+        MIGRATION_DATABASE_URL_SECRET
+    ).reveal_text()
 
 
 def run_migrations_offline() -> None:

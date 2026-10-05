@@ -3,15 +3,19 @@ from __future__ import annotations
 from functools import lru_cache
 from typing import Literal
 
-from pydantic import Field, SecretStr, model_validator
+from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
     environment: Literal["local", "test", "ci", "staging", "prod"] = "local"
-    database_url: SecretStr
-    migration_database_url: SecretStr | None = None
+
     log_level: str = "INFO"
+    otel_enabled: bool = False
+    otel_service_name: str = "core-data-platform"
+    otel_exporter_otlp_endpoint: str = "http://localhost:4318"
+    otel_trace_sample_ratio: float = Field(default=1.0, ge=0.0, le=1.0)
+    otel_metric_export_interval_millis: int = Field(default=5000, ge=1000, le=60000)
     openapi_enabled: bool = True
     oidc_issuer: str = "http://localhost:8180/realms/core-data-platform"
     oidc_audience: str = "core-data-api"
@@ -20,12 +24,15 @@ class Settings(BaseSettings):
     oidc_clock_skew_seconds: int = Field(default=30, ge=0, le=300)
     tenant_header: str = "X-Tenant-Id"
     correlation_header: str = "X-Correlation-Id"
+    evidence_signing_key_id: str | None = None
 
     model_config = SettingsConfigDict(
         env_prefix="CORE_PLATFORM_",
         env_file=".env",
         env_file_encoding="utf-8",
-        extra="forbid",
+        # Secret and connector providers may share the same .env file.
+        # Settings validates only its own non-secret configuration surface.
+        extra="ignore",
     )
 
     @model_validator(mode="after")
@@ -36,6 +43,9 @@ class Settings(BaseSettings):
             raise ValueError("OIDC audience must not be empty")
         if self.environment in {"staging", "prod"} and not self.oidc_issuer.startswith("https://"):
             raise ValueError("OIDC issuer must use HTTPS outside local/test environments")
+        key_id = self.evidence_signing_key_id
+        if key_id is not None and (not key_id or key_id != key_id.strip()):
+            raise ValueError("Evidence signing key ID must be non-empty and trimmed")
         return self
 
     @property
@@ -46,11 +56,6 @@ class Settings(BaseSettings):
         if values != ("RS256",):
             raise ValueError("P0-I2 permits RS256 only; changing algorithms requires an ADR")
         return values
-
-    def require_migration_database_url(self) -> str:
-        if self.migration_database_url is None:
-            raise RuntimeError("CORE_PLATFORM_MIGRATION_DATABASE_URL is required for migrations")
-        return self.migration_database_url.get_secret_value()
 
 
 @lru_cache(maxsize=1)

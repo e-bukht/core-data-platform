@@ -17,6 +17,25 @@ _bearer = HTTPBearer(auto_error=False)
 logger = structlog.get_logger(__name__)
 
 
+def _break_glass_log_fields(
+    context: ExecutionContext,
+) -> dict[str, str | bool]:
+    elevation = context.break_glass
+
+    if elevation is None:
+        return {}
+
+    return {
+        "break_glass": True,
+        "break_glass_grant_id": str(
+            elevation.grant_id.value
+        ),
+        "break_glass_scope_kind": (
+            elevation.scope.kind.value
+        ),
+    }
+
+
 def _correlation_id(request: Request) -> CorrelationId:
     header_name = request.app.state.settings.correlation_header
     raw = request.headers.get(header_name)
@@ -72,10 +91,15 @@ def require_capability(
             )
             raise
 
+        break_glass_log_fields = (
+            _break_glass_log_fields(context)
+        )
+
         bind_contextvars(
             correlation_id=str(context.correlation_id),
             tenant_id=str(context.tenant_id),
             actor_id=str(context.actor_id),
+            **break_glass_log_fields,
         )
         await logger.ainfo(
             "authorization_decision",
@@ -84,6 +108,7 @@ def require_capability(
             correlation_id=str(context.correlation_id),
             tenant_id=str(context.tenant_id),
             actor_id=str(context.actor_id),
+            **break_glass_log_fields,
         )
         try:
             with bind_execution_context(context):

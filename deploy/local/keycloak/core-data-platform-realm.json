@@ -32,6 +32,74 @@
             "access.token.claim": "true"
           }
         }
+      ],
+      "authenticationFlowBindingOverrides": {
+        "direct_grant": "1e8b187f-f30f-4f44-8d9b-6cb9e8720f3b"
+      },
+      "defaultClientScopes": [
+        "web-origins",
+        "acr",
+        "roles",
+        "profile",
+        "basic",
+        "email"
+      ],
+      "optionalClientScopes": [
+        "address",
+        "phone",
+        "offline_access",
+        "organization",
+        "microprofile-jwt"
+      ]
+    },
+    {
+      "clientId": "core-data-break-glass-cli",
+      "name": "Core Data Break-glass CLI",
+      "description": "Dedicated local Direct Grant client for Break-glass MFA activation",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "bearerOnly": false,
+      "clientAuthenticatorType": "client-secret",
+      "directAccessGrantsEnabled": true,
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "serviceAccountsEnabled": false,
+      "fullScopeAllowed": true,
+      "attributes": {
+        "acr.loa.map": "{\"2\":2}",
+        "default.acr.values": "2",
+        "minimum.acr.value": "2"
+      },
+      "authenticationFlowBindingOverrides": {
+        "direct_grant": "343a96fc-e7d6-4c10-bb50-3b12992590fd"
+      },
+      "protocolMappers": [
+        {
+          "name": "core-data-api-audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "included.client.audience": "core-data-api",
+            "access.token.claim": "true"
+          }
+        }
+      ],
+      "defaultClientScopes": [
+        "web-origins",
+        "acr",
+        "roles",
+        "profile",
+        "basic",
+        "email"
+      ],
+      "optionalClientScopes": [
+        "address",
+        "phone",
+        "offline_access",
+        "organization",
+        "microprofile-jwt"
       ]
     }
   ],
@@ -50,7 +118,107 @@
           "value": "alice-local-only",
           "temporary": false
         }
+      ],
+      "requiredActions": [
+        "CONFIGURE_TOTP"
       ]
+    }
+  ],
+  "authenticationFlows": [
+    {
+      "id": "1e8b187f-f30f-4f44-8d9b-6cb9e8720f3b",
+      "alias": "core-data-normal-direct-grant",
+      "description": "Normal password-only Direct Grant for the local Core Data CLI",
+      "providerId": "basic-flow",
+      "topLevel": true,
+      "builtIn": false,
+      "authenticationExecutions": [
+        {
+          "authenticator": "direct-grant-validate-username",
+          "authenticatorFlow": false,
+          "requirement": "REQUIRED",
+          "priority": 10,
+          "userSetupAllowed": false
+        },
+        {
+          "authenticator": "direct-grant-validate-password",
+          "authenticatorFlow": false,
+          "requirement": "REQUIRED",
+          "priority": 20,
+          "userSetupAllowed": false
+        }
+      ]
+    },
+    {
+      "id": "343a96fc-e7d6-4c10-bb50-3b12992590fd",
+      "alias": "core-data-break-glass-direct-grant",
+      "description": "Dedicated Break-glass Direct Grant requiring LoA 2 and OTP",
+      "providerId": "basic-flow",
+      "topLevel": true,
+      "builtIn": false,
+      "authenticationExecutions": [
+        {
+          "authenticator": "direct-grant-validate-username",
+          "authenticatorFlow": false,
+          "requirement": "REQUIRED",
+          "priority": 10,
+          "userSetupAllowed": false
+        },
+        {
+          "authenticator": "direct-grant-validate-password",
+          "authenticatorFlow": false,
+          "requirement": "REQUIRED",
+          "priority": 20,
+          "userSetupAllowed": false
+        },
+        {
+          "authenticatorFlow": true,
+          "requirement": "CONDITIONAL",
+          "priority": 30,
+          "flowAlias": "core-data-break-glass-direct-grant Direct Grant - Conditional OTP",
+          "userSetupAllowed": false
+        }
+      ]
+    },
+    {
+      "alias": "core-data-break-glass-direct-grant Direct Grant - Conditional OTP",
+      "description": "Break-glass LoA 2 conditional OTP enforcement",
+      "providerId": "basic-flow",
+      "topLevel": false,
+      "builtIn": false,
+      "authenticationExecutions": [
+        {
+          "authenticatorConfig": "Break-glass LoA 2",
+          "authenticator": "conditional-level-of-authentication",
+          "authenticatorFlow": false,
+          "requirement": "REQUIRED",
+          "priority": 10,
+          "userSetupAllowed": false
+        },
+        {
+          "authenticator": "conditional-user-configured",
+          "authenticatorFlow": false,
+          "requirement": "REQUIRED",
+          "priority": 20,
+          "userSetupAllowed": false
+        },
+        {
+          "authenticator": "direct-grant-validate-otp",
+          "authenticatorFlow": false,
+          "requirement": "REQUIRED",
+          "priority": 30,
+          "userSetupAllowed": false
+        }
+      ]
+    }
+  ],
+  "authenticatorConfig": [
+    {
+      "alias": "Break-glass LoA 2",
+      "config": {
+        "loa-condition-level": "2",
+        "loa-max-age": "0"
+      }
     }
   ]
 }

@@ -48,5 +48,17 @@ services:
     volumes:
       - ./keycloak/core-data-platform-realm.json:/opt/keycloak/data/import/core-data-platform-realm.json:ro
 
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.161.0
+    profiles: ["telemetry"]
+    command:
+      - "--config=/etc/otelcol-contrib/config.yaml"
+    ports:
+      - "${CORE_PLATFORM_OTEL_GRPC_PORT:-4317}:4317"
+      - "${CORE_PLATFORM_OTEL_HTTP_PORT:-4318}:4318"
+      - "${CORE_PLATFORM_OTEL_HEALTH_PORT:-13133}:13133"
+    volumes:
+      - ./otel/collector.yaml:/etc/otelcol-contrib/config.yaml:ro
+
 volumes:
   pg18-data:

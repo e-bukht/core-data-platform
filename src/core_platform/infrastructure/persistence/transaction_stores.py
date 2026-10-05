@@ -9,6 +9,10 @@ from sqlalchemy.engine import RowMapping
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from core_platform.foundation.identifiers import CorrelationId
+from core_platform.infrastructure.observability.metrics import (
+    InfrastructureMetrics,
+    NoopInfrastructureMetrics,
+)
 from core_platform.infrastructure.persistence.transaction_schema import (
     audit_record,
     idempotency_record,
@@ -203,9 +207,12 @@ class PostgresOutboxStore:
         self,
         connection: ConnectionProvider,
         context: TransactionContext,
+        *,
+        metrics: InfrastructureMetrics | None = None,
     ) -> None:
         self._connection = connection
         self._context = context
+        self._metrics = metrics if metrics is not None else NoopInfrastructureMetrics()
 
     async def add(self, message: OutboxMessage) -> None:
         envelope = message.envelope
@@ -246,6 +253,7 @@ class PostgresOutboxStore:
                 last_error=message.last_error,
             )
         )
+        self._metrics.record_outbox_added()
 
     async def claim_ready(
         self,
@@ -303,8 +311,12 @@ class PostgresOutboxStore:
         rows = (await self._connection().execute(statement)).mappings().all()
 
         by_id = {row["id"]: row for row in rows}
-
-        return tuple(_outbox_from_row(by_id[message_id]) for message_id in ids)
+        messages = tuple(
+            _outbox_from_row(by_id[message_id])
+            for message_id in ids
+        )
+        self._metrics.record_outbox_claimed(count=len(messages))
+        return messages
 
     async def mark_published(
         self,
@@ -340,6 +352,8 @@ class PostgresOutboxStore:
 
         if result.rowcount != 1:
             raise RuntimeError("Outbox lease ownership lost")
+
+        self._metrics.record_outbox_published()
 
     async def release(
         self,
@@ -377,15 +391,20 @@ class PostgresOutboxStore:
         if result.rowcount != 1:
             raise RuntimeError("Outbox lease ownership lost")
 
+        self._metrics.record_outbox_released()
+
 
 class PostgresInboxStore:
     def __init__(
         self,
         connection: ConnectionProvider,
         context: TransactionContext,
+        *,
+        metrics: InfrastructureMetrics | None = None,
     ) -> None:
         self._connection = connection
         self._context = context
+        self._metrics = metrics if metrics is not None else NoopInfrastructureMetrics()
 
     async def get(
         self,
@@ -400,6 +419,7 @@ class PostgresInboxStore:
         )
 
         row = (await self._connection().execute(statement)).mappings().one_or_none()
+        self._metrics.record_inbox_lookup(found=row is not None)
 
         if row is None:
             return None
@@ -426,6 +446,7 @@ class PostgresInboxStore:
                 processed_at=message.processed_at,
             )
         )
+        self._metrics.record_inbox_added()
 
     async def mark_processed(
         self,
@@ -449,6 +470,8 @@ class PostgresInboxStore:
 
         if result.rowcount != 1:
             raise RuntimeError("Inbox message not found or already processed")
+
+        self._metrics.record_inbox_processed()
 
 
 class PostgresAuditStore:

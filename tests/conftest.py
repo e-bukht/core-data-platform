@@ -1,9 +1,13 @@
 from __future__ import annotations
 
 import asyncio
+import base64
 import os
 import sys
 from pathlib import Path
+
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
 if sys.platform == "win32":
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
@@ -22,3 +26,22 @@ os.environ.setdefault(
     "CORE_PLATFORM_OIDC_ISSUER", "http://localhost:8180/realms/core-data-platform"
 )
 os.environ.setdefault("CORE_PLATFORM_OIDC_AUDIENCE", "core-data-api")
+
+
+def _test_only_evidence_key() -> str:
+    key = Ed25519PrivateKey.generate()
+    raw = key.private_bytes(
+        encoding=serialization.Encoding.DER,
+        format=serialization.PrivateFormat.PKCS8,
+        encryption_algorithm=serialization.NoEncryption(),
+    )
+    return base64.b64encode(raw).decode("ascii")
+
+
+# Applied during pytest bootstrap, before test modules import the global ASGI app.
+# Test-only material remains process-local and is never printed or persisted.
+os.environ.setdefault("CORE_PLATFORM_EVIDENCE_SIGNING_KEY_ID", "test-ephemeral-ed25519")
+if not os.environ.get("CORE_PLATFORM_EVIDENCE_SIGNING_PRIVATE_KEY_B64"):
+    os.environ["CORE_PLATFORM_EVIDENCE_SIGNING_PRIVATE_KEY_B64"] = (
+        _test_only_evidence_key()
+    )

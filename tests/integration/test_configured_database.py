@@ -6,15 +6,20 @@ import pytest
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import create_async_engine
 
-from core_platform.host.settings import get_settings
 from core_platform.infrastructure.persistence.schema import EXPECTED_ALEMBIC_REVISION
+from core_platform.infrastructure.security.secret_catalog import (
+    RUNTIME_DATABASE_URL_SECRET,
+    build_environment_secret_provider,
+)
 
 pytestmark = pytest.mark.integration
 
 
 async def _query() -> tuple[int, str | None]:
-    settings = get_settings()
-    url = settings.database_url.get_secret_value()
+    provider = build_environment_secret_provider()
+    url = provider.get_secret(
+        RUNTIME_DATABASE_URL_SECRET
+    ).reveal_text()
     engine = create_async_engine(url)
     try:
         async with engine.connect() as connection:

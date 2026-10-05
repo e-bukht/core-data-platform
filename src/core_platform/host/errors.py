@@ -26,6 +26,13 @@ async def platform_error_handler(request: Request, exc: PlatformError) -> JSONRe
     if exc.category.value == "authentication":
         headers["WWW-Authenticate"] = "Bearer"
 
+    observability = getattr(request.app.state, "observability", None)
+    if observability is not None:
+        observability.metrics.record_platform_error(
+            category=exc.category.value,
+            status_code=status_code,
+        )
+
     payload = {
         "type": f"urn:core-data-platform:error:{exc.code}",
         "title": exc.category.value,

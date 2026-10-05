@@ -4,6 +4,9 @@ from dataclasses import dataclass
 
 from core_platform.foundation.identifiers import CorrelationId
 from core_platform.platform_kernel.actor import ActorType
+from core_platform.platform_kernel.break_glass import (
+    BreakGlassElevationContext,
+)
 from core_platform.platform_kernel.identity import AuthenticationContext
 from core_platform.platform_kernel.ids import ActorId, TenantId
 
@@ -19,3 +22,4 @@ class ExecutionContext:
     locale: str = "en"
     timezone: str = "UTC"
     delegated_by: ActorId | None = None
+    break_glass: BreakGlassElevationContext | None = None

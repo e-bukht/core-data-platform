@@ -151,6 +151,14 @@ audit_record = Table(
     Column("outcome", String(32), nullable=False),
     Column("occurred_at", DateTime(timezone=True), nullable=False),
     Column("details", JSONB, nullable=False),
+    UniqueConstraint(
+        "tenant_id",
+        "id",
+        "transaction_id",
+        "actor_id",
+        "correlation_id",
+        name="uq_audit_record_evidence_identity",
+    ),
 )
 
 

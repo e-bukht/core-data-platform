@@ -72,3 +72,26 @@ class GrantId:
 
     def __str__(self) -> str:
         return str(self.value)
+
+@dataclass(frozen=True, slots=True)
+class EvidenceRecordId:
+    value: UUID
+
+    @classmethod
+    def new(cls) -> EvidenceRecordId:
+        return cls(new_uuid7())
+
+    def __str__(self) -> str:
+        return str(self.value)
+
+
+@dataclass(frozen=True, slots=True)
+class BreakGlassGrantId:
+    value: UUID
+
+    @classmethod
+    def new(cls) -> BreakGlassGrantId:
+        return cls(new_uuid7())
+
+    def __str__(self) -> str:
+        return str(self.value)

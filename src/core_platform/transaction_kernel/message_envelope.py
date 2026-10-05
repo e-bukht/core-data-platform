@@ -3,9 +3,9 @@ from __future__ import annotations
 from collections.abc import Mapping
 from datetime import datetime
 
-from core_platform.transaction_kernel.hashing import (
+from core_platform.foundation.canonical_json import (
     JsonValue,
-    canonical_request_hash,
+    canonical_json_sha256,
 )
 from core_platform.transaction_kernel.ids import MessageId
 from core_platform.transaction_kernel.models import (
@@ -78,5 +78,5 @@ def create_message_envelope(
         aggregate_id=aggregate_id,
         aggregate_version=aggregate_version,
         payload=payload_snapshot,
-        payload_hash=canonical_request_hash(payload_snapshot),
+        payload_hash=canonical_json_sha256(payload_snapshot),
     )
