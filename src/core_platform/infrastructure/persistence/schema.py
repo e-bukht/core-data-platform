@@ -1,1 +1,1 @@
-EXPECTED_ALEMBIC_REVISION = "0005_break_glass"
+EXPECTED_ALEMBIC_REVISION = "0006_bg_manage_capability"

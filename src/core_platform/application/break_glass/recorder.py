@@ -5,19 +5,13 @@ from datetime import UTC, datetime
 from core_platform.application.break_glass.ports import (
     BreakGlassActivationPersistence,
 )
-from core_platform.foundation.canonical_json import (
-    JsonValue,
-    canonical_json_bytes,
-    canonical_json_sha256,
+from core_platform.application.evidence.factory import (
+    SignedEvidenceFactory,
 )
+from core_platform.foundation.canonical_json import JsonValue
 from core_platform.foundation.temporal import Clock
 from core_platform.platform_kernel.context import ExecutionContext
-from core_platform.platform_kernel.evidence import (
-    EvidenceEnvelope,
-    EvidenceRecord,
-    EvidenceRecordId,
-    EvidenceSigner,
-)
+from core_platform.platform_kernel.evidence import EvidenceSigner
 from core_platform.transaction_kernel.ids import (
     AuditRecordId,
     TransactionId,
@@ -119,8 +113,11 @@ class DurableBreakGlassActivationRecorder:
         clock: Clock,
     ) -> None:
         self._persistence = persistence
-        self._signer = signer
         self._clock = clock
+        self._evidence_factory = SignedEvidenceFactory(
+            signer=signer,
+            clock=clock,
+        )
 
     async def record(
         self,
@@ -178,40 +175,16 @@ class DurableBreakGlassActivationRecorder:
             details=payload,
         )
 
-        canonical_payload = canonical_json_bytes(
-            payload
-        )
-
-        envelope = EvidenceEnvelope(
-            envelope_version=1,
-            record_id=EvidenceRecordId.new(),
-            tenant_id=context.tenant_id,
+        evidence_record = await self._evidence_factory.create(
+            context=context,
             audit_record_id=audit_record_id.value,
             transaction_id=transaction_id.value,
-            actor_id=context.actor_id,
-            correlation_id=context.correlation_id,
             evidence_type=(
                 BREAK_GLASS_ACTIVATION_EVIDENCE_TYPE
             ),
             occurred_at=elevation.activated_at,
+            payload=payload,
             signed_at=started_at,
-            payload_hash=canonical_json_sha256(
-                payload
-            ),
-            signature_algorithm=(
-                self._signer.algorithm
-            ),
-            key_id=self._signer.key_id,
-        )
-
-        signature = await self._signer.sign(
-            envelope.signing_bytes()
-        )
-
-        evidence_record = EvidenceRecord(
-            envelope=envelope,
-            canonical_payload=canonical_payload,
-            signature=signature,
         )
 
         await self._persistence.persist(

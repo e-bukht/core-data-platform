@@ -6,16 +6,14 @@ from datetime import datetime
 from enum import StrEnum
 from uuid import UUID
 
-from core_platform.foundation.canonical_json import (
-    JsonValue,
-    canonical_json_bytes,
-    canonical_json_sha256,
+from core_platform.application.evidence.factory import (
+    SignedEvidenceFactory,
 )
+from core_platform.foundation.canonical_json import JsonValue
 from core_platform.foundation.errors import ResourceNotFound
 from core_platform.foundation.temporal import Clock
 from core_platform.platform_kernel.context import ExecutionContext
 from core_platform.platform_kernel.evidence import (
-    EvidenceEnvelope,
     EvidenceRecord,
     EvidenceRecordId,
     EvidenceRepository,
@@ -48,9 +46,11 @@ class EvidenceService:
         clock: Clock,
     ) -> None:
         self._repository = repository
-        self._signer = signer
         self._verifier = verifier
-        self._clock = clock
+        self._factory = SignedEvidenceFactory(
+            signer=signer,
+            clock=clock,
+        )
 
     async def create_evidence(
         self,
@@ -62,32 +62,13 @@ class EvidenceService:
         occurred_at: datetime,
         payload: Mapping[str, JsonValue],
     ) -> EvidenceRecord:
-        canonical_payload = canonical_json_bytes(payload)
-
-        envelope = EvidenceEnvelope(
-            envelope_version=1,
-            record_id=EvidenceRecordId.new(),
-            tenant_id=context.tenant_id,
+        record = await self._factory.create(
+            context=context,
             audit_record_id=audit_record_id,
             transaction_id=transaction_id,
-            actor_id=context.actor_id,
-            correlation_id=context.correlation_id,
             evidence_type=evidence_type,
             occurred_at=occurred_at,
-            signed_at=self._clock.now(),
-            payload_hash=canonical_json_sha256(payload),
-            signature_algorithm=self._signer.algorithm,
-            key_id=self._signer.key_id,
-        )
-
-        signature = await self._signer.sign(
-            envelope.signing_bytes()
-        )
-
-        record = EvidenceRecord(
-            envelope=envelope,
-            canonical_payload=canonical_payload,
-            signature=signature,
+            payload=payload,
         )
 
         await self._repository.append(record)

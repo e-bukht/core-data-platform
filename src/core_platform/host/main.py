@@ -10,9 +10,10 @@ from core_platform.__about__ import __version__
 from core_platform.application.context_trust import ContextTrustService
 from core_platform.foundation.errors import PlatformError
 from core_platform.foundation.secrets import SecretProvider
+from core_platform.host.api.break_glass import router as break_glass_router
 from core_platform.host.api.context_trust import router as context_trust_router
 from core_platform.host.break_glass_composition import (
-    build_break_glass_activation_recorder,
+    build_break_glass_runtime,
 )
 from core_platform.host.errors import platform_error_handler
 from core_platform.host.health import router as health_router
@@ -54,7 +55,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     try:
         observability.instrument_database(database)
         # Startup fails closed when the key ID or signing secret is unavailable.
-        break_glass_recorder = build_break_glass_activation_recorder(
+        break_glass_runtime = build_break_glass_runtime(
             settings=settings,
             secret_provider=secret_provider,
             database=database,
@@ -72,13 +73,18 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         repository = SqlContextTrustRepository(database)
         break_glass_repository = SqlBreakGlassRepository(database)
         app.state.database = database
+        app.state.break_glass_lifecycle = (
+            break_glass_runtime.lifecycle_service
+        )
         app.state.context_trust = ContextTrustService(
             authenticator=authenticator,
             repository=repository,
             break_glass_repository=break_glass_repository,
             pdp=CapabilityGrantPdp(),
             environment=settings.environment,
-            break_glass_activation_recorder=break_glass_recorder,
+            break_glass_activation_recorder=(
+                break_glass_runtime.activation_recorder
+            ),
         )
         app.state.startup_complete = True
         yield
@@ -152,6 +158,7 @@ def create_app(
     app.add_exception_handler(PlatformError, platform_error_handler)  # type: ignore[arg-type]
     app.include_router(health_router)
     app.include_router(context_trust_router)
+    app.include_router(break_glass_router)
     configure_openapi(app, issuer=active_settings.oidc_issuer)
     return app
 

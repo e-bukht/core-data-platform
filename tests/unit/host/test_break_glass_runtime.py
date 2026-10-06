@@ -7,7 +7,10 @@ import pytest
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
-from core_platform.application.break_glass import DurableBreakGlassActivationRecorder
+from core_platform.application.break_glass import (
+    BreakGlassLifecycleService,
+    DurableBreakGlassActivationRecorder,
+)
 from core_platform.host.main import create_app
 from core_platform.host.settings import Settings
 from core_platform.infrastructure.observability import (
@@ -71,10 +74,36 @@ def test_runtime_injects_real_durable_recorder() -> None:
         async with app.router.lifespan_context(app):
             service = app.state.context_trust
             recorder = service._break_glass_activation_recorder
-            assert isinstance(recorder, DurableBreakGlassActivationRecorder)
-            assert recorder._signer.key_id == "test-key-01"
-            assert recorder._persistence._factory._database is app.state.database
-            assert recorder._persistence._factory._metrics is app.state.observability.metrics
+            lifecycle = app.state.break_glass_lifecycle
+
+            assert isinstance(
+                recorder,
+                DurableBreakGlassActivationRecorder,
+            )
+            assert isinstance(
+                lifecycle,
+                BreakGlassLifecycleService,
+            )
+
+            assert recorder._evidence_factory._signer.key_id == "test-key-01"
+
+            assert (
+                recorder._persistence._factory
+                is lifecycle._persistence._factory
+            )
+            assert (
+                recorder._persistence._factory._database
+                is app.state.database
+            )
+            assert (
+                recorder._persistence._factory._metrics
+                is app.state.observability.metrics
+            )
+            assert (
+                recorder._evidence_factory._signer
+                is lifecycle._evidence_factory._signer
+            )
+
             assert app.state.startup_complete is True
         assert app.state.startup_complete is False
 

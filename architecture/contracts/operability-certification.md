@@ -1,4 +1,4 @@
-﻿# P0-I4 Operability & Certification - Implementation Contract
+# P0-I4 Operability & Certification - Implementation Contract
 
 Status: IMPLEMENTATION CONTRACT
 Version: 1.0
@@ -181,6 +181,23 @@ A break-glass grant MUST have:
 
 A break-glass grant MUST NOT create a permanent universal super-administrator.
 
+The break-glass grant lifecycle MUST support explicit issuance, suspension,
+resumption and revocation.
+
+Every break-glass lifecycle mutation MUST:
+
+- require the dedicated `platform.break-glass.manage` capability;
+- require direct authorization and reject authorization obtained through a
+  break-glass elevation;
+- remain tenant-scoped;
+- enforce optimistic concurrency against the expected grant version and source
+  status where applicable;
+- commit the state mutation, AuditRecord and linked EvidenceRecord atomically.
+
+A suspended grant MUST NOT be resumed outside its validity window.
+
+Revocation MUST be terminal.
+
 A break-glass path MUST NOT bypass tenant isolation, evidence generation or
 audit.
 
@@ -356,7 +373,7 @@ Actor authentication
 | C-I4-09 | Tenant provisioning is idempotent and resumes correctly after injected mid-workflow failure. |
 | C-I4-10 | A partially provisioned tenant never becomes ACTIVE and failed provisioning remains repairable. |
 | C-I4-11 | EvidenceRecord binds request/result hashes, transaction, actor and correlation; reference signing verifies and tampering is detected. |
-| C-I4-12 | Break-glass activation requires elevated assurance, reason, scope and expiry and produces enhanced audit/evidence without permanent universal privilege. |
+| C-I4-12 | Break-glass grants require elevated assurance, reason, scope and expiry; issuance, suspension, resumption and revocation are directly authorized, tenant-scoped, concurrency-safe and atomically audited/evidenced; resumption respects validity, revocation is terminal and break-glass elevation cannot administer the lifecycle. |
 | C-I4-13 | Reusable Test Platform fixtures/assertions support tenant, identity, policy, DB, messaging and telemetry certification scenarios. |
 | C-I4-14 | Architecture fitness and residual Phase 0 MUST checks pass with no unapproved violation. |
 | C-I4-15 | CI produces an immutable commit-addressable artifact, SBOM and verifiable signature/attestation after all quality/security gates pass. |
@@ -436,6 +453,8 @@ P0-I4 cannot be certified if any of the following remains:
 - secret/token leakage in telemetry;
 - partially provisioned tenant marked ACTIVE;
 - unaudited or non-expiring break-glass privilege;
+- break-glass lifecycle administration authorized through break-glass
+  elevation or committed without linked AuditRecord/EvidenceRecord;
 - Evidence verification accepting tampered content;
 - loss of committed Outbox state during transport outage;
 - restore that cannot recover a migration-consistent database;

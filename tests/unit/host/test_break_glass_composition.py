@@ -8,10 +8,16 @@ import pytest
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
-from core_platform.application.break_glass import DurableBreakGlassActivationRecorder
+from core_platform.application.break_glass import (
+    BreakGlassLifecycleService,
+    DurableBreakGlassActivationRecorder,
+)
 from core_platform.foundation.secrets import SecretProvider
 from core_platform.foundation.temporal import UtcClock
-from core_platform.host.break_glass_composition import build_break_glass_activation_recorder
+from core_platform.host.break_glass_composition import (
+    build_break_glass_activation_recorder,
+    build_break_glass_runtime,
+)
 from core_platform.host.settings import Settings
 from core_platform.infrastructure.persistence.break_glass_activation_persistence import (
     PostgresBreakGlassActivationPersistence,
@@ -52,10 +58,10 @@ def test_factory_composes_real_ed25519_signer_and_atomic_persistence() -> None:
     assert isinstance(recorder._clock, UtcClock)
     assert isinstance(recorder._persistence, PostgresBreakGlassActivationPersistence)
     assert recorder._persistence._factory._database is database
-    assert recorder._signer.algorithm == "Ed25519"
-    assert recorder._signer.key_id == "test-evidence-key-01"
+    assert recorder._evidence_factory._signer.algorithm == "Ed25519"
+    assert recorder._evidence_factory._signer.key_id == "test-evidence-key-01"
 
-    signed = asyncio.run(recorder._signer.sign(b"composition-test"))
+    signed = asyncio.run(recorder._evidence_factory._signer.sign(b"composition-test"))
     key.public_key().verify(signed, b"composition-test")
 
 
@@ -88,3 +94,75 @@ def test_factory_rejects_invalid_private_key_without_leaking_value() -> None:
             database=Mock(spec=Database),
         )
     assert invalid_secret not in str(err.value)
+
+# === C-I4-12ae SHARED RUNTIME ===
+
+
+def test_runtime_composition_shares_signer_and_uow_factory() -> None:
+    key = Ed25519PrivateKey.generate()
+
+    private_der = key.private_bytes(
+        encoding=serialization.Encoding.DER,
+        format=serialization.PrivateFormat.PKCS8,
+        encryption_algorithm=serialization.NoEncryption(),
+    )
+
+    provider = _provider(
+        base64.b64encode(
+            private_der
+        ).decode("ascii")
+    )
+
+    database = Mock(
+        spec=Database
+    )
+
+    runtime = build_break_glass_runtime(
+        settings=Settings(
+            _env_file=None,
+            evidence_signing_key_id="test-evidence-key-02",
+        ),
+        secret_provider=provider,
+        database=database,
+    )
+
+    recorder = runtime.activation_recorder
+    lifecycle = runtime.lifecycle_service
+
+    assert isinstance(
+        recorder,
+        DurableBreakGlassActivationRecorder,
+    )
+    assert isinstance(
+        lifecycle,
+        BreakGlassLifecycleService,
+    )
+
+    assert (
+        recorder._persistence._factory
+        is lifecycle._persistence._factory
+    )
+    assert (
+        recorder._persistence._factory._database
+        is database
+    )
+
+    assert (
+        recorder._evidence_factory._signer
+        is lifecycle._evidence_factory._signer
+    )
+
+    assert recorder._evidence_factory._signer.key_id == (
+        "test-evidence-key-02"
+    )
+
+    signed = asyncio.run(
+        recorder._evidence_factory._signer.sign(
+            b"shared-runtime-composition"
+        )
+    )
+
+    key.public_key().verify(
+        signed,
+        b"shared-runtime-composition",
+    )

@@ -13,6 +13,9 @@ from core_platform.infrastructure.observability.metrics import (
     NoopInfrastructureMetrics,
     TransactionOutcome,
 )
+from core_platform.infrastructure.persistence.break_glass_lifecycle_store import (
+    PostgresBreakGlassLifecycleStore,
+)
 from core_platform.infrastructure.persistence.database import Database
 from core_platform.infrastructure.persistence.evidence_store import (
     PostgresEvidenceRepository,
@@ -80,6 +83,12 @@ class PostgresUnitOfWork:
             self._require_connection,
             context,
         )
+        self._break_glass_lifecycle = (
+            PostgresBreakGlassLifecycleStore(
+                self._require_connection,
+                context,
+            )
+        )
 
     @property
     def context(self) -> TransactionContext:
@@ -104,6 +113,12 @@ class PostgresUnitOfWork:
     @property
     def evidence(self) -> EvidenceRepository:
         return self._evidence
+
+    @property
+    def break_glass_lifecycle(
+        self,
+    ) -> PostgresBreakGlassLifecycleStore:
+        return self._break_glass_lifecycle
 
     async def __aenter__(self) -> PostgresUnitOfWork:
         if self._used:
