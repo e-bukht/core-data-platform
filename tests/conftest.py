@@ -9,6 +9,13 @@ from pathlib import Path
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
+pytest_plugins = (
+    "tests.test_platform.fixtures",
+    "tests.test_platform.messaging",
+    "tests.test_platform.postgres",
+    "tests.test_platform.telemetry",
+)
+
 if sys.platform == "win32":
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 

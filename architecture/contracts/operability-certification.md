@@ -242,6 +242,29 @@ Reusable assertions SHOULD cover:
 - telemetry correlation;
 - cross-tenant denial.
 
+C-I4-13 certification evidence is implemented by the reusable
+`tests/test_platform/` package and registered globally through
+`tests/conftest.py`:
+
+- `fixtures.py` provides deterministic Tenant, Actor, capability/policy and
+  execution-context fixtures;
+- `identity.py` provides an in-process reference OIDC provider exercising the
+  real `OidcTokenAuthenticator`;
+- `postgres.py` provides a migrated PostgreSQL certification fixture, proven
+  on PostgreSQL 12.22 and PostgreSQL 18;
+- `messaging.py` provides the reference in-memory messaging transport;
+- `telemetry.py` provides an in-memory collector backed by the real
+  `ObservabilityRuntime`;
+- `assertions.py` provides reusable audit, evidence, outbox, inbox and
+  cross-tenant denial assertions;
+- `telemetry_assertions.py` provides reusable distributed-trace correlation
+  assertions.
+
+The certification tests prove the Test Platform through real runtime
+boundaries where applicable: PostgreSQL migrations and RLS, the transactional
+UoW, Audit/Evidence persistence, Outbox/Inbox persistence, OIDC token
+validation and OpenTelemetry collection.
+
 ### 3.8 CI/CD and supply chain
 
 The release pipeline MUST gate, at minimum:
