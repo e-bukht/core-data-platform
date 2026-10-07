@@ -94,3 +94,225 @@ jobs:
       - run: test -f uv.lock
       - run: uv sync --frozen
       - run: uv run pytest tests/integration/test_postgres_compatibility.py tests/integration/test_rls.py -v
+  certification:
+    runs-on: ubuntu-latest
+    needs: [quality, postgres-matrix, tenant-isolation]
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_DB: coredata
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: ci-admin-only
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d coredata"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      CORE_PLATFORM_ENVIRONMENT: ci
+      CORE_PLATFORM_ADMIN_DATABASE_URL: postgresql+psycopg://postgres:ci-admin-only@localhost:5432/coredata
+      CORE_PLATFORM_MIGRATION_DATABASE_URL: postgresql+psycopg://coredata_migrator:ci-migrator-only@localhost:5432/coredata
+      CORE_PLATFORM_DATABASE_URL: postgresql+psycopg://coredata_runtime:ci-runtime-only@localhost:5432/coredata
+      CORE_PLATFORM_OIDC_ISSUER: http://localhost:8180/realms/core-data-platform
+      CORE_PLATFORM_OIDC_AUDIENCE: core-data-api
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - uses: astral-sh/setup-uv@v10
+        with:
+          version: "0.12.15"
+      - name: Require committed lockfile
+        run: test -f uv.lock
+      - run: uv sync --frozen
+      - run: uv run python scripts/bootstrap_db_roles.py
+      - run: uv run alembic upgrade head
+      - name: Full certification regression
+        run: uv run pytest
+  release:
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-latest
+    needs: certification
+
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+      artifact-metadata: write
+
+    env:
+      SOURCE_SHA: ${{ github.sha }}
+      GH_TOKEN: ${{ github.token }}
+
+    steps:
+      - name: Checkout certified source
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+
+      - name: Verify checked-out commit
+        shell: bash
+        run: test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      - uses: astral-sh/setup-uv@v10
+        with:
+          version: "0.12.15"
+
+      - name: Require committed lockfile
+        run: test -f uv.lock
+
+      - name: Restore frozen environment
+        run: uv sync --frozen
+
+      - name: Build immutable wheel
+        shell: bash
+        run: |
+          rm -rf dist .release
+          mkdir -p .release
+          uv build --wheel --out-dir dist
+          test "$(find dist -maxdepth 1 -type f -name '*.whl' | wc -l)" -eq 1
+
+      - name: Resolve release identity
+        id: identity
+        shell: bash
+        run: |
+          VERSION="$(python -c 'import tomllib; print(tomllib.load(open("pyproject.toml", "rb"))["project"]["version"])')"
+          WHEEL="$(find dist -maxdepth 1 -type f -name '*.whl' -print -quit)"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "wheel=$WHEEL" >> "$GITHUB_OUTPUT"
+          echo "artifact_name=core-data-platform-${VERSION}-${SOURCE_SHA}" >> "$GITHUB_OUTPUT"
+
+      - name: Generate release CycloneDX SBOM
+        run: >
+          uv export
+          --preview-features sbom-export
+          --format cyclonedx1.5
+          --frozen
+          --no-dev
+          --output-file .release/runtime.cdx.json
+
+      - name: Create release manifest and immutable digests
+        shell: bash
+        env:
+          RELEASE_VERSION: ${{ steps.identity.outputs.version }}
+          RELEASE_WHEEL: ${{ steps.identity.outputs.wheel }}
+          RELEASE_ARTIFACT_NAME: ${{ steps.identity.outputs.artifact_name }}
+        run: |
+          WHEEL_SHA256="$(sha256sum "$RELEASE_WHEEL" | cut -d' ' -f1)"
+          SBOM_SHA256="$(sha256sum .release/runtime.cdx.json | cut -d' ' -f1)"
+          export WHEEL_SHA256 SBOM_SHA256
+
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          manifest = {
+              "schema_version": 1,
+              "name": "core-data-platform",
+              "version": os.environ["RELEASE_VERSION"],
+              "source_commit": os.environ["SOURCE_SHA"],
+              "artifact_name": os.environ["RELEASE_ARTIFACT_NAME"],
+              "wheel": {
+                  "path": os.environ["RELEASE_WHEEL"],
+                  "sha256": os.environ["WHEEL_SHA256"],
+              },
+              "sbom": {
+                  "path": ".release/runtime.cdx.json",
+                  "format": "CycloneDX",
+                  "sha256": os.environ["SBOM_SHA256"],
+              },
+          }
+
+          Path(".release/release-manifest.json").write_text(
+              json.dumps(manifest, indent=2, sort_keys=True) + "\n",
+              encoding="utf-8",
+          )
+          PY
+      - name: Record SHA256SUMS
+        shell: bash
+        run: |
+          sha256sum \
+            "${{ steps.identity.outputs.wheel }}" \
+            ".release/runtime.cdx.json" \
+            ".release/release-manifest.json" \
+            > .release/SHA256SUMS.txt
+          cat .release/SHA256SUMS.txt
+
+      - name: Attest build provenance
+        id: provenance
+        uses: actions/attest@v4.2.2
+        with:
+          subject-path: ${{ steps.identity.outputs.wheel }}
+
+      - name: Attest CycloneDX SBOM
+        id: sbom
+        uses: actions/attest@v4.2.2
+        with:
+          subject-path: ${{ steps.identity.outputs.wheel }}
+          sbom-path: .release/runtime.cdx.json
+
+      - name: Preserve attestation bundles
+        shell: bash
+        env:
+          PROVENANCE_BUNDLE: ${{ steps.provenance.outputs.bundle-path }}
+          SBOM_BUNDLE: ${{ steps.sbom.outputs.bundle-path }}
+        run: |
+          cp "$PROVENANCE_BUNDLE" .release/provenance.sigstore.json
+          cp "$SBOM_BUNDLE" .release/sbom.sigstore.json
+
+      - name: Verify provenance and SBOM attestations
+        shell: bash
+        run: |
+          gh attestation verify \
+            "${{ steps.identity.outputs.wheel }}" \
+            --bundle .release/provenance.sigstore.json \
+            --repo "$GITHUB_REPOSITORY" \
+            --source-digest "$SOURCE_SHA" \
+            --signer-digest "$SOURCE_SHA" \
+            --source-ref refs/heads/main \
+            --signer-workflow "$GITHUB_REPOSITORY/.github/workflows/ci.yml" \
+            --deny-self-hosted-runners
+
+          gh attestation verify \
+            "${{ steps.identity.outputs.wheel }}" \
+            --bundle .release/sbom.sigstore.json \
+            --repo "$GITHUB_REPOSITORY" \
+            --source-digest "$SOURCE_SHA" \
+            --signer-digest "$SOURCE_SHA" \
+            --source-ref refs/heads/main \
+            --signer-workflow "$GITHUB_REPOSITORY/.github/workflows/ci.yml" \
+            --deny-self-hosted-runners \
+            --predicate-type https://cyclonedx.org/bom
+
+      - name: Smoke-test built wheel
+        shell: bash
+        run: |
+          uv venv .release/smoke-venv --python 3.12
+          uv pip install \
+            --python .release/smoke-venv/bin/python \
+            "${{ steps.identity.outputs.wheel }}"
+          .release/smoke-venv/bin/python -c "import core_platform"
+          rm -rf .release/smoke-venv
+
+      - name: Upload immutable commit-addressable release bundle
+        uses: actions/upload-artifact@v6
+        with:
+          name: ${{ steps.identity.outputs.artifact_name }}
+          if-no-files-found: error
+          overwrite: false
+          path: |
+            dist/*.whl
+            .release/runtime.cdx.json
+            .release/release-manifest.json
+            .release/SHA256SUMS.txt
+            .release/provenance.sigstore.json
+            .release/sbom.sigstore.json

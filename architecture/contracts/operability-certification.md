@@ -480,6 +480,45 @@ implementation dependency makes a minimal adapter necessary.
 - I4.9 TestResource full Phase 0 E2E certification
 - I4.10 Final quality, security and Phase 0 Go/No-Go seal
 
+### C-I4-15 local certification evidence
+
+C-I4-15 supply-chain implementation is locally certified, while remote
+GitHub Actions / Sigstore execution evidence remains required before the
+criterion can be closed:
+
+- the tracked CI certification job depends on quality, PostgreSQL matrix and
+  tenant-isolation gates;
+- the privileged release job executes only for pushes to `main` and only after
+  certification succeeds;
+- privileged OIDC / attestation permissions are isolated to the release job;
+- the release source is bound to `github.sha` and the checked-out commit is
+  explicitly verified before build;
+- the wheel artifact name is versioned and commit-addressable;
+- a CycloneDX 1.5 runtime SBOM is generated and bound to the release artifact
+  through the release manifest and SHA-256 digests;
+- build provenance and SBOM attestations use `actions/attest@v4.2.2`;
+- attestation verification constrains source digest, signer digest, source
+  branch, signer workflow and CycloneDX predicate type;
+- the built wheel is smoke-tested before the immutable release bundle is
+  uploaded with overwrite disabled;
+- automated architecture fitness tests lock the release trust boundary,
+  ordering, commit binding, SBOM binding, attestation and upload invariants;
+- deterministic local release proof successfully built and imported
+  `core_data_platform-0.2.0-py3-none-any.whl`, verified version/commit,
+  wheel/SBOM hash bindings and `SHA256SUMS`, then cleaned all proof output;
+- global certification gates are green: 330 pytest tests pass with two
+  warnings, Ruff passes, mypy passes for 108 source files and the supply-chain
+  fitness test, Import Linter keeps all four contracts with zero broken
+  contracts, all 11 architecture fitness tests pass, and Alembic reports
+  `0006_bg_manage_capability (head)`.
+
+No Git remote is configured in the local repository. Therefore no remote CI
+run, GitHub artifact upload, Sigstore attestation issuance or remote
+`gh attestation verify` execution is claimed as evidence.
+
+C-I4-15 remains NOT CLOSED pending remote execution evidence for the certified
+workflow and the resulting commit-addressable artifact, SBOM and verifiable
+attestations.
 ## 10. Immediate NO-GO conditions
 
 P0-I4 cannot be certified if any of the following remains:
