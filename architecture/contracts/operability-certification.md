@@ -429,6 +429,20 @@ their SDKs.
 
 Reference infrastructure dependencies MUST remain replaceable adapters.
 
+C-I4-14 certification evidence demonstrates that architecture fitness and
+residual inherited Phase 0 MUST requirements are green with no approved
+deviation required:
+
+- all architecture fitness tests pass;
+- all four Import Linter dependency contracts are kept with zero broken
+  contracts;
+- runtime PostgreSQL role/RLS invariants are covered by automated tests;
+- PostgreSQL 12.22 / PostgreSQL 18 compatibility requirements are covered by
+  migration and runtime compatibility tests;
+- transaction consumer idempotence is covered by Inbox effectively-once and
+  transaction-kernel tests;
+- no approved ADR deviation is required for the certified residual checks.
+
 ## 8. Explicitly deferred
 
 The following are not required to close Phase 0:
