@@ -36,24 +36,12 @@ from core_platform.transaction_kernel.models import (
     TransactionContext,
 )
 
-TENANT_ID = TenantId(
-    UUID("00000000-0000-7000-8000-000000000021")
-)
-ACTOR_ID = ActorId(
-    UUID("00000000-0000-7000-8000-000000000022")
-)
-GRANT_ID = BreakGlassGrantId(
-    UUID("00000000-0000-7000-8000-000000000023")
-)
-TRANSACTION_ID = TransactionId(
-    UUID("00000000-0000-7000-8000-000000000024")
-)
-AUDIT_ID = AuditRecordId(
-    UUID("00000000-0000-7000-8000-000000000025")
-)
-CORRELATION_ID = CorrelationId(
-    UUID("00000000-0000-7000-8000-000000000026")
-)
+TENANT_ID = TenantId(UUID("00000000-0000-7000-8000-000000000021"))
+ACTOR_ID = ActorId(UUID("00000000-0000-7000-8000-000000000022"))
+GRANT_ID = BreakGlassGrantId(UUID("00000000-0000-7000-8000-000000000023"))
+TRANSACTION_ID = TransactionId(UUID("00000000-0000-7000-8000-000000000024"))
+AUDIT_ID = AuditRecordId(UUID("00000000-0000-7000-8000-000000000025"))
+CORRELATION_ID = CorrelationId(UUID("00000000-0000-7000-8000-000000000026"))
 NOW = datetime(
     2026,
     10,
@@ -99,11 +87,7 @@ def _audit() -> AuditRecord:
 def _evidence() -> EvidenceRecord:
     envelope = EvidenceEnvelope(
         envelope_version=1,
-        record_id=EvidenceRecordId(
-            UUID(
-                "00000000-0000-7000-8000-000000000027"
-            )
-        ),
+        record_id=EvidenceRecordId(UUID("00000000-0000-7000-8000-000000000027")),
         tenant_id=TENANT_ID,
         audit_record_id=AUDIT_ID.value,
         transaction_id=TRANSACTION_ID.value,
@@ -174,9 +158,7 @@ class _AppendStore:
         self._events.append(self._name)
 
         if self.fail:
-            raise RuntimeError(
-                f"{self._name} failed"
-            )
+            raise RuntimeError(f"{self._name} failed")
 
 
 class _UnitOfWork:
@@ -206,9 +188,7 @@ class _UnitOfWork:
     ) -> None:
         del exc_value, traceback
 
-        self.exited_with_error = (
-            exc_type is not None
-        )
+        self.exited_with_error = exc_type is not None
         self.events.append("exit")
 
     async def commit(self) -> None:
@@ -237,10 +217,8 @@ def test_transition_audit_evidence_commit_order() -> None:
         uow = _UnitOfWork()
         factory = _Factory(uow)
 
-        persistence = (
-            PostgresBreakGlassLifecyclePersistence(
-                factory,  # type: ignore[arg-type]
-            )
+        persistence = PostgresBreakGlassLifecyclePersistence(
+            factory,  # type: ignore[arg-type]
         )
 
         version = await persistence.persist_transition(
@@ -288,10 +266,8 @@ def test_failure_never_commits(
         else:
             uow.evidence.fail = True
 
-        persistence = (
-            PostgresBreakGlassLifecyclePersistence(
-                _Factory(uow),  # type: ignore[arg-type]
-            )
+        persistence = PostgresBreakGlassLifecyclePersistence(
+            _Factory(uow),  # type: ignore[arg-type]
         )
 
         with pytest.raises(
@@ -303,9 +279,7 @@ def test_failure_never_commits(
                 grant_id=GRANT_ID,
                 expected_version=7,
                 expected_current_status=BreakGlassGrantStatus.ACTIVE,
-                target_status=(
-                    BreakGlassGrantStatus.SUSPENDED
-                ),
+                target_status=(BreakGlassGrantStatus.SUSPENDED),
                 changed_at=NOW,
                 audit_record=_audit(),
                 evidence_record=_evidence(),
@@ -322,10 +296,8 @@ def test_transition_failure_never_writes_audit_or_evidence() -> None:
         uow = _UnitOfWork()
         uow.break_glass_lifecycle.fail = True
 
-        persistence = (
-            PostgresBreakGlassLifecyclePersistence(
-                _Factory(uow),  # type: ignore[arg-type]
-            )
+        persistence = PostgresBreakGlassLifecyclePersistence(
+            _Factory(uow),  # type: ignore[arg-type]
         )
 
         with pytest.raises(
@@ -337,9 +309,7 @@ def test_transition_failure_never_writes_audit_or_evidence() -> None:
                 grant_id=GRANT_ID,
                 expected_version=7,
                 expected_current_status=BreakGlassGrantStatus.ACTIVE,
-                target_status=(
-                    BreakGlassGrantStatus.SUSPENDED
-                ),
+                target_status=(BreakGlassGrantStatus.SUSPENDED),
                 changed_at=NOW,
                 audit_record=_audit(),
                 evidence_record=_evidence(),
@@ -365,15 +335,11 @@ def test_linkage_mismatch_fails_before_uow_creation() -> None:
     object.__setattr__(
         bad_evidence.envelope,
         "audit_record_id",
-        UUID(
-            "00000000-0000-7000-8000-000000000099"
-        ),
+        UUID("00000000-0000-7000-8000-000000000099"),
     )
 
-    persistence = (
-        PostgresBreakGlassLifecyclePersistence(
-            factory,  # type: ignore[arg-type]
-        )
+    persistence = PostgresBreakGlassLifecyclePersistence(
+        factory,  # type: ignore[arg-type]
     )
 
     with pytest.raises(
@@ -386,9 +352,7 @@ def test_linkage_mismatch_fails_before_uow_creation() -> None:
                 grant_id=GRANT_ID,
                 expected_version=7,
                 expected_current_status=BreakGlassGrantStatus.ACTIVE,
-                target_status=(
-                    BreakGlassGrantStatus.SUSPENDED
-                ),
+                target_status=(BreakGlassGrantStatus.SUSPENDED),
                 changed_at=NOW,
                 audit_record=_audit(),
                 evidence_record=bad_evidence,
@@ -397,6 +361,7 @@ def test_linkage_mismatch_fails_before_uow_creation() -> None:
 
     assert factory.context is None
 
+
 # === C-I4-12l ATOMIC ISSUE PERSISTENCE ===
 
 
@@ -404,18 +369,10 @@ def _grant() -> BreakGlassGrant:
     return BreakGlassGrant(
         grant_id=GRANT_ID,
         tenant_id=TENANT_ID,
-        actor_id=ActorId(
-            UUID(
-                "00000000-0000-7000-8000-000000000028"
-            )
-        ),
+        actor_id=ActorId(UUID("00000000-0000-7000-8000-000000000028")),
         issued_by_actor_id=ACTOR_ID,
-        capabilities=(
-            "platform.outbox.retry",
-        ),
-        scope=BreakGlassScope(
-            BreakGlassScopeKind.TENANT
-        ),
+        capabilities=("platform.outbox.retry",),
+        scope=BreakGlassScope(BreakGlassScopeKind.TENANT),
         reason="Emergency recovery",
         valid_from=NOW,
         valid_until=datetime(
@@ -427,12 +384,8 @@ def _grant() -> BreakGlassGrant:
             tzinfo=UTC,
         ),
         status=BreakGlassGrantStatus.ACTIVE,
-        accepted_acr_values=frozenset(
-            {"urn:core-platform:acr:elevated"}
-        ),
-        required_amr=frozenset(
-            {"mfa"}
-        ),
+        accepted_acr_values=frozenset({"urn:core-platform:acr:elevated"}),
+        required_amr=frozenset({"mfa"}),
     )
 
 
@@ -441,10 +394,8 @@ def test_issue_audit_evidence_commit_order() -> None:
         uow = _UnitOfWork()
         factory = _Factory(uow)
 
-        persistence = (
-            PostgresBreakGlassLifecyclePersistence(
-                factory,  # type: ignore[arg-type]
-            )
+        persistence = PostgresBreakGlassLifecyclePersistence(
+            factory,  # type: ignore[arg-type]
         )
 
         version = await persistence.persist_issue(
@@ -476,10 +427,8 @@ def test_issue_failure_never_writes_audit_or_evidence() -> None:
         uow = _UnitOfWork()
         uow.break_glass_lifecycle.issue_fail = True
 
-        persistence = (
-            PostgresBreakGlassLifecyclePersistence(
-                _Factory(uow),  # type: ignore[arg-type]
-            )
+        persistence = PostgresBreakGlassLifecyclePersistence(
+            _Factory(uow),  # type: ignore[arg-type]
         )
 
         with pytest.raises(
@@ -509,10 +458,8 @@ def test_issue_evidence_failure_never_commits() -> None:
         uow = _UnitOfWork()
         uow.evidence.fail = True
 
-        persistence = (
-            PostgresBreakGlassLifecyclePersistence(
-                _Factory(uow),  # type: ignore[arg-type]
-            )
+        persistence = PostgresBreakGlassLifecyclePersistence(
+            _Factory(uow),  # type: ignore[arg-type]
         )
 
         with pytest.raises(

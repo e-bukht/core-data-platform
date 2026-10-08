@@ -13,12 +13,8 @@ down_revision = "0005_break_glass"
 branch_labels = None
 depends_on = None
 
-BREAK_GLASS_MANAGEMENT_CAPABILITY_ID = (
-    "00000000-0000-7000-8000-000000000105"
-)
-BREAK_GLASS_MANAGEMENT_CAPABILITY = (
-    "platform.break-glass.manage"
-)
+BREAK_GLASS_MANAGEMENT_CAPABILITY_ID = "00000000-0000-7000-8000-000000000105"
+BREAK_GLASS_MANAGEMENT_CAPABILITY = "platform.break-glass.manage"
 
 
 def upgrade() -> None:

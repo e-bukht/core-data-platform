@@ -47,16 +47,12 @@ async def _runtime_identity(
 def test_certification_postgres_fixture_is_migrated_and_runtime_scoped(
     cert_postgres: CertificationPostgres,
 ) -> None:
-    readiness = asyncio.run(
-        cert_postgres.database.readiness()
-    )
+    readiness = asyncio.run(cert_postgres.database.readiness())
 
     assert readiness.ready
     assert readiness.revision == EXPECTED_ALEMBIC_REVISION
 
-    current_user, revision = asyncio.run(
-        _runtime_identity(cert_postgres)
-    )
+    current_user, revision = asyncio.run(_runtime_identity(cert_postgres))
 
     assert current_user == "coredata_runtime"
     assert revision == EXPECTED_ALEMBIC_REVISION

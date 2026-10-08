@@ -18,9 +18,7 @@ from core_platform.infrastructure.persistence.context_trust_schema import (
     metadata,
 )
 
-BREAK_GLASS_TENANT_SCOPED_TABLES = (
-    "break_glass_grant",
-)
+BREAK_GLASS_TENANT_SCOPED_TABLES = ("break_glass_grant",)
 
 
 break_glass_grant = Table(

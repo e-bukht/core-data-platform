@@ -20,15 +20,11 @@ from core_platform.infrastructure.observability import (
 
 _TRACE_ID_HEX = "0123456789abcdef0123456789abcdef"
 _PARENT_SPAN_ID_HEX = "0123456789abcdef"
-_TRACEPARENT = (
-    f"00-{_TRACE_ID_HEX}-{_PARENT_SPAN_ID_HEX}-01"
-)
+_TRACEPARENT = f"00-{_TRACE_ID_HEX}-{_PARENT_SPAN_ID_HEX}-01"
 
 
 def _selector_loop_factory() -> asyncio.AbstractEventLoop:
-    return asyncio.SelectorEventLoop(
-        selectors.SelectSelector()
-    )
+    return asyncio.SelectorEventLoop(selectors.SelectSelector())
 
 
 async def _assert_http_to_postgres_trace_continuity() -> None:
@@ -77,11 +73,7 @@ async def _assert_http_to_postgres_trace_continuity() -> None:
 
         spans = span_exporter.get_finished_spans()
 
-        server_spans = [
-            span
-            for span in spans
-            if span.kind is SpanKind.SERVER
-        ]
+        server_spans = [span for span in spans if span.kind is SpanKind.SERVER]
 
         assert len(server_spans) == 1
 
@@ -105,25 +97,19 @@ async def _assert_http_to_postgres_trace_continuity() -> None:
             if (
                 span.kind is SpanKind.CLIENT
                 and span.instrumentation_scope is not None
-                and span.instrumentation_scope.name
-                == "opentelemetry.instrumentation.sqlalchemy"
+                and span.instrumentation_scope.name == "opentelemetry.instrumentation.sqlalchemy"
             )
         ]
 
         assert sqlalchemy_spans
 
         assert all(
-            span.context is not None
-            and span.context.trace_id == int(_TRACE_ID_HEX, 16)
+            span.context is not None and span.context.trace_id == int(_TRACE_ID_HEX, 16)
             for span in sqlalchemy_spans
         )
 
 
 @pytest.mark.integration
 def test_http_ingress_trace_continues_into_postgresql() -> None:
-    with asyncio.Runner(
-        loop_factory=_selector_loop_factory
-    ) as runner:
-        runner.run(
-            _assert_http_to_postgres_trace_continuity()
-        )
+    with asyncio.Runner(loop_factory=_selector_loop_factory) as runner:
+        runner.run(_assert_http_to_postgres_trace_continuity())

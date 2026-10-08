@@ -83,11 +83,9 @@ class PostgresUnitOfWork:
             self._require_connection,
             context,
         )
-        self._break_glass_lifecycle = (
-            PostgresBreakGlassLifecycleStore(
-                self._require_connection,
-                context,
-            )
+        self._break_glass_lifecycle = PostgresBreakGlassLifecycleStore(
+            self._require_connection,
+            context,
         )
 
     @property

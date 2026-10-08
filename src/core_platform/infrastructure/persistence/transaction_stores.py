@@ -311,10 +311,7 @@ class PostgresOutboxStore:
         rows = (await self._connection().execute(statement)).mappings().all()
 
         by_id = {row["id"]: row for row in rows}
-        messages = tuple(
-            _outbox_from_row(by_id[message_id])
-            for message_id in ids
-        )
+        messages = tuple(_outbox_from_row(by_id[message_id]) for message_id in ids)
         self._metrics.record_outbox_claimed(count=len(messages))
         return messages
 

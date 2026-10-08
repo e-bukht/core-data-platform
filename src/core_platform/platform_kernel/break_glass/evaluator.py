@@ -22,9 +22,7 @@ def _normalize_optional(
     normalized = value.strip()
 
     if not normalized:
-        raise ValueError(
-            f"{field_name} must not be empty"
-        )
+        raise ValueError(f"{field_name} must not be empty")
 
     return normalized
 
@@ -42,9 +40,7 @@ class BreakGlassRequest:
         capability = self.capability.strip()
 
         if not capability:
-            raise ValueError(
-                "capability must not be empty"
-            )
+            raise ValueError("capability must not be empty")
 
         resource_type = _normalize_optional(
             self.resource_type,
@@ -55,13 +51,8 @@ class BreakGlassRequest:
             field_name="resource_id",
         )
 
-        if (
-            resource_id is not None
-            and resource_type is None
-        ):
-            raise ValueError(
-                "resource_id requires resource_type"
-            )
+        if resource_id is not None and resource_type is None:
+            raise ValueError("resource_id requires resource_type")
 
         object.__setattr__(
             self,
@@ -90,19 +81,13 @@ class BreakGlassDecision:
         reason_code = self.reason_code.strip()
 
         if not reason_code:
-            raise ValueError(
-                "reason_code must not be empty"
-            )
+            raise ValueError("reason_code must not be empty")
 
         if self.allowed and self.elevation is None:
-            raise ValueError(
-                "allowed break-glass decision requires elevation"
-            )
+            raise ValueError("allowed break-glass decision requires elevation")
 
         if not self.allowed and self.elevation is not None:
-            raise ValueError(
-                "denied break-glass decision must not contain elevation"
-            )
+            raise ValueError("denied break-glass decision must not contain elevation")
 
         object.__setattr__(
             self,
@@ -129,18 +114,13 @@ def evaluate_break_glass(
     if grant is None:
         return _deny("grant_not_found")
 
-    if (
-        grant.tenant_id != request.tenant_id
-        or grant.actor_id != request.actor_id
-    ):
+    if grant.tenant_id != request.tenant_id or grant.actor_id != request.actor_id:
         return _deny("grant_subject_mismatch")
 
     if not grant.is_active_at(now):
         return _deny("grant_not_active")
 
-    if not grant.permits_capability(
-        request.capability
-    ):
+    if not grant.permits_capability(request.capability):
         return _deny("capability_not_permitted")
 
     if not grant.scope.matches(
@@ -151,21 +131,13 @@ def evaluate_break_glass(
 
     if (
         grant.accepted_acr_values
-        and request.authentication_context.acr
-        not in grant.accepted_acr_values
+        and request.authentication_context.acr not in grant.accepted_acr_values
     ):
         return _deny("acr_insufficient")
 
-    authentication_amr = frozenset(
-        request.authentication_context.amr
-    )
+    authentication_amr = frozenset(request.authentication_context.amr)
 
-    if (
-        grant.required_amr
-        and not grant.required_amr.issubset(
-            authentication_amr
-        )
-    ):
+    if grant.required_amr and not grant.required_amr.issubset(authentication_amr):
         return _deny("amr_insufficient")
 
     elevation = BreakGlassElevationContext(

@@ -22,34 +22,20 @@ from core_platform.transaction_kernel.models import (
     TransactionContext,
 )
 
-BREAK_GLASS_ACTIVATION_OPERATION = (
-    "security.break-glass.activate"
-)
-BREAK_GLASS_ACTIVATION_EVIDENCE_TYPE = (
-    "security.break-glass.activation"
-)
+BREAK_GLASS_ACTIVATION_OPERATION = "security.break-glass.activate"
+BREAK_GLASS_ACTIVATION_EVIDENCE_TYPE = "security.break-glass.activation"
 BREAK_GLASS_RESOURCE_TYPE = "BreakGlassGrant"
 
 
 def _utc_iso(value: datetime) -> str:
-    if (
-        value.tzinfo is None
-        or value.utcoffset() is None
-    ):
-        raise ValueError(
-            "Break-glass timestamp must be timezone-aware"
-        )
+    if value.tzinfo is None or value.utcoffset() is None:
+        raise ValueError("Break-glass timestamp must be timezone-aware")
 
     normalized = value.astimezone(UTC)
 
-    return (
-        normalized.isoformat(
-            timespec="microseconds"
-        )
-        .replace(
-            "+00:00",
-            "Z",
-        )
+    return normalized.isoformat(timespec="microseconds").replace(
+        "+00:00",
+        "Z",
     )
 
 
@@ -59,47 +45,27 @@ def _activation_payload(
     elevation = context.break_glass
 
     if elevation is None:
-        raise ValueError(
-            "ExecutionContext has no break-glass elevation"
-        )
+        raise ValueError("ExecutionContext has no break-glass elevation")
 
     return {
         "event": "break-glass.activation",
         "outcome": "SUCCESS",
-        "tenant_id": str(
-            context.tenant_id.value
-        ),
-        "actor_id": str(
-            context.actor_id.value
-        ),
-        "grant_id": str(
-            elevation.grant_id.value
-        ),
-        "issued_by_actor_id": str(
-            elevation.issued_by_actor_id.value
-        ),
+        "tenant_id": str(context.tenant_id.value),
+        "actor_id": str(context.actor_id.value),
+        "grant_id": str(elevation.grant_id.value),
+        "issued_by_actor_id": str(elevation.issued_by_actor_id.value),
         "capability": elevation.capability,
         "scope": {
             "kind": elevation.scope.kind.value,
-            "resource_type": (
-                elevation.scope.resource_type
-            ),
-            "resource_id": (
-                elevation.scope.resource_id
-            ),
+            "resource_type": (elevation.scope.resource_type),
+            "resource_id": (elevation.scope.resource_id),
         },
         "reason": elevation.reason,
-        "activated_at": _utc_iso(
-            elevation.activated_at
-        ),
-        "valid_until": _utc_iso(
-            elevation.valid_until
-        ),
+        "activated_at": _utc_iso(elevation.activated_at),
+        "valid_until": _utc_iso(elevation.valid_until),
         "authentication": {
             "acr": context.authentication.acr,
-            "amr": list(
-                context.authentication.amr
-            ),
+            "amr": list(context.authentication.amr),
         },
     }
 
@@ -126,19 +92,12 @@ class DurableBreakGlassActivationRecorder:
         elevation = context.break_glass
 
         if elevation is None:
-            raise ValueError(
-                "ExecutionContext has no break-glass elevation"
-            )
+            raise ValueError("ExecutionContext has no break-glass elevation")
 
         started_at = self._clock.now()
 
-        if (
-            started_at.tzinfo is None
-            or started_at.utcoffset() is None
-        ):
-            raise ValueError(
-                "Clock returned a naive timestamp"
-            )
+        if started_at.tzinfo is None or started_at.utcoffset() is None:
+            raise ValueError("Clock returned a naive timestamp")
 
         transaction_id = TransactionId.new()
         audit_record_id = AuditRecordId.new()
@@ -154,9 +113,7 @@ class DurableBreakGlassActivationRecorder:
             idempotency_key=None,
         )
 
-        payload = _activation_payload(
-            context
-        )
+        payload = _activation_payload(context)
 
         audit_record = AuditRecord(
             record_id=audit_record_id,
@@ -167,9 +124,7 @@ class DurableBreakGlassActivationRecorder:
             capability=elevation.capability,
             action=BREAK_GLASS_ACTIVATION_OPERATION,
             resource_type=BREAK_GLASS_RESOURCE_TYPE,
-            resource_id=str(
-                elevation.grant_id.value
-            ),
+            resource_id=str(elevation.grant_id.value),
             outcome=AuditOutcome.SUCCESS,
             occurred_at=elevation.activated_at,
             details=payload,
@@ -179,9 +134,7 @@ class DurableBreakGlassActivationRecorder:
             context=context,
             audit_record_id=audit_record_id.value,
             transaction_id=transaction_id.value,
-            evidence_type=(
-                BREAK_GLASS_ACTIVATION_EVIDENCE_TYPE
-            ),
+            evidence_type=(BREAK_GLASS_ACTIVATION_EVIDENCE_TYPE),
             occurred_at=elevation.activated_at,
             payload=payload,
             signed_at=started_at,

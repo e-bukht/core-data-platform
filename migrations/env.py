@@ -19,9 +19,7 @@ target_metadata = None
 
 def database_url() -> str:
     provider = build_environment_secret_provider()
-    return provider.get_secret(
-        MIGRATION_DATABASE_URL_SECRET
-    ).reveal_text()
+    return provider.get_secret(MIGRATION_DATABASE_URL_SECRET).reveal_text()
 
 
 def run_migrations_offline() -> None:

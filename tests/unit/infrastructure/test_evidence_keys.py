@@ -27,16 +27,11 @@ def _encoded_private_key() -> str:
         encryption_algorithm=serialization.NoEncryption(),
     )
 
-    return base64.b64encode(
-        der
-    ).decode("ascii")
+    return base64.b64encode(der).decode("ascii")
 
 
 def test_evidence_signing_secret_reference_is_logical() -> None:
-    assert (
-        EVIDENCE_SIGNING_PRIVATE_KEY_SECRET.name
-        == "evidence/signing-private-key"
-    )
+    assert EVIDENCE_SIGNING_PRIVATE_KEY_SECRET.name == "evidence/signing-private-key"
 
 
 def test_ed25519_private_key_loads_through_secret_provider(
@@ -93,9 +88,7 @@ def test_valid_base64_with_invalid_key_material_is_rejected(
     monkeypatch: MonkeyPatch,
 ) -> None:
     raw_secret = b"not-a-pkcs8-private-key"
-    encoded = base64.b64encode(
-        raw_secret
-    ).decode("ascii")
+    encoded = base64.b64encode(raw_secret).decode("ascii")
 
     monkeypatch.setenv(
         "CORE_PLATFORM_EVIDENCE_SIGNING_PRIVATE_KEY_B64",
@@ -114,6 +107,4 @@ def test_valid_base64_with_invalid_key_material_is_rejected(
         )
 
     assert encoded not in str(exc_info.value)
-    assert raw_secret.decode("ascii") not in str(
-        exc_info.value
-    )
+    assert raw_secret.decode("ascii") not in str(exc_info.value)

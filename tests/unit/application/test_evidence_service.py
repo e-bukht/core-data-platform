@@ -94,11 +94,8 @@ def _context(
     tenant_id: TenantId | None = None,
 ) -> ExecutionContext:
     return ExecutionContext(
-        tenant_id=tenant_id
-        or TenantId(UUID("20000000-0000-7000-8000-000000000001")),
-        actor_id=ActorId(
-            UUID("50000000-0000-7000-8000-000000000001")
-        ),
+        tenant_id=tenant_id or TenantId(UUID("20000000-0000-7000-8000-000000000001")),
+        actor_id=ActorId(UUID("50000000-0000-7000-8000-000000000001")),
         actor_type=ActorType.HUMAN,
         authentication=AuthenticationContext(
             issuer="https://issuer.example.test",
@@ -119,9 +116,7 @@ def _context(
                 tzinfo=UTC,
             ),
         ),
-        correlation_id=CorrelationId(
-            UUID("60000000-0000-7000-8000-000000000001")
-        ),
+        correlation_id=CorrelationId(UUID("60000000-0000-7000-8000-000000000001")),
     )
 
 
@@ -141,12 +136,8 @@ async def _create_record(
 
     return await service.create_evidence(
         context=context or _context(),
-        audit_record_id=UUID(
-            "30000000-0000-7000-8000-000000000001"
-        ),
-        transaction_id=UUID(
-            "40000000-0000-7000-8000-000000000001"
-        ),
+        audit_record_id=UUID("30000000-0000-7000-8000-000000000001"),
+        transaction_id=UUID("40000000-0000-7000-8000-000000000001"),
         evidence_type="transaction.audit",
         occurred_at=_OCCURRED_AT,
         payload={
@@ -179,10 +170,7 @@ def test_create_evidence_binds_context_and_signs_envelope() -> None:
 
         assert signer.last_payload == record.envelope.signing_bytes()
         assert record.payload_hash_matches()
-        assert (
-            repository.records[record.envelope.record_id]
-            == record
-        )
+        assert repository.records[record.envelope.record_id] == record
 
     asyncio.run(run())
 
@@ -202,20 +190,14 @@ def test_create_evidence_canonicalizes_payload() -> None:
 
         record = await service.create_evidence(
             context=_context(),
-            audit_record_id=UUID(
-                "30000000-0000-7000-8000-000000000001"
-            ),
-            transaction_id=UUID(
-                "40000000-0000-7000-8000-000000000001"
-            ),
+            audit_record_id=UUID("30000000-0000-7000-8000-000000000001"),
+            transaction_id=UUID("40000000-0000-7000-8000-000000000001"),
             evidence_type="transaction.audit",
             occurred_at=_OCCURRED_AT,
             payload={"z": 1, "a": "Cafe\u0301"},
         )
 
-        assert record.canonical_payload == canonical_json_bytes(
-            {"a": "Café", "z": 1}
-        )
+        assert record.canonical_payload == canonical_json_bytes({"a": "Café", "z": 1})
 
     asyncio.run(run())
 
@@ -266,9 +248,7 @@ def test_verify_detects_payload_hash_mismatch_before_crypto() -> None:
 
         repository.records[record.envelope.record_id] = replace(
             record,
-            canonical_payload=canonical_json_bytes(
-                {"action": "tampered"}
-            ),
+            canonical_payload=canonical_json_bytes({"action": "tampered"}),
         )
 
         service = EvidenceService(
@@ -283,10 +263,7 @@ def test_verify_detects_payload_hash_mismatch_before_crypto() -> None:
             record_id=record.envelope.record_id,
         )
 
-        assert (
-            result.status
-            is EvidenceVerificationStatus.PAYLOAD_HASH_MISMATCH
-        )
+        assert result.status is EvidenceVerificationStatus.PAYLOAD_HASH_MISMATCH
         assert verifier.calls == 0
 
     asyncio.run(run())
@@ -316,10 +293,7 @@ def test_verify_reports_invalid_signature() -> None:
             record_id=record.envelope.record_id,
         )
 
-        assert (
-            result.status
-            is EvidenceVerificationStatus.SIGNATURE_INVALID
-        )
+        assert result.status is EvidenceVerificationStatus.SIGNATURE_INVALID
         assert verifier.calls == 1
 
     asyncio.run(run())
@@ -337,16 +311,11 @@ def test_missing_evidence_raises_resource_not_found() -> None:
         with pytest.raises(ResourceNotFound) as exc_info:
             await service.verify_evidence(
                 context=_context(),
-                record_id=EvidenceRecordId(
-                    UUID("10000000-0000-7000-8000-000000000099")
-                ),
+                record_id=EvidenceRecordId(UUID("10000000-0000-7000-8000-000000000099")),
             )
 
         assert exc_info.value.code == "EVIDENCE.NOT_FOUND"
-        assert (
-            exc_info.value.correlation_id
-            == str(_context().correlation_id)
-        )
+        assert exc_info.value.correlation_id == str(_context().correlation_id)
 
     asyncio.run(run())
 
@@ -357,11 +326,7 @@ def test_cross_tenant_record_is_not_disclosed() -> None:
         signer = _Signer()
         verifier = _Verifier(valid=True)
 
-        foreign_context = _context(
-            tenant_id=TenantId(
-                UUID("20000000-0000-7000-8000-000000000099")
-            )
-        )
+        foreign_context = _context(tenant_id=TenantId(UUID("20000000-0000-7000-8000-000000000099")))
 
         foreign_record = await _create_record(
             repository=repository,

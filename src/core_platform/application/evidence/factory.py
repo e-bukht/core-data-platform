@@ -42,9 +42,7 @@ class SignedEvidenceFactory:
         payload: Mapping[str, JsonValue],
         signed_at: datetime | None = None,
     ) -> EvidenceRecord:
-        canonical_payload = canonical_json_bytes(
-            payload
-        )
+        canonical_payload = canonical_json_bytes(payload)
 
         envelope = EvidenceEnvelope(
             envelope_version=1,
@@ -56,23 +54,13 @@ class SignedEvidenceFactory:
             correlation_id=context.correlation_id,
             evidence_type=evidence_type,
             occurred_at=occurred_at,
-            signed_at=(
-                self._clock.now()
-                if signed_at is None
-                else signed_at
-            ),
-            payload_hash=canonical_json_sha256(
-                payload
-            ),
-            signature_algorithm=(
-                self._signer.algorithm
-            ),
+            signed_at=(self._clock.now() if signed_at is None else signed_at),
+            payload_hash=canonical_json_sha256(payload),
+            signature_algorithm=(self._signer.algorithm),
             key_id=self._signer.key_id,
         )
 
-        signature = await self._signer.sign(
-            envelope.signing_bytes()
-        )
+        signature = await self._signer.sign(envelope.signing_bytes())
 
         return EvidenceRecord(
             envelope=envelope,

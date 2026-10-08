@@ -37,35 +37,19 @@ class PostgresEvidenceRepository:
         envelope = record.envelope
 
         if envelope.tenant_id != self._context.tenant_id:
-            raise ValueError(
-                "Evidence tenant does not match UnitOfWork"
-            )
+            raise ValueError("Evidence tenant does not match UnitOfWork")
 
-        if (
-            envelope.transaction_id
-            != self._context.transaction_id.value
-        ):
-            raise ValueError(
-                "Evidence transaction does not match UnitOfWork"
-            )
+        if envelope.transaction_id != self._context.transaction_id.value:
+            raise ValueError("Evidence transaction does not match UnitOfWork")
 
         if envelope.actor_id != self._context.actor_id:
-            raise ValueError(
-                "Evidence actor does not match UnitOfWork"
-            )
+            raise ValueError("Evidence actor does not match UnitOfWork")
 
-        if (
-            envelope.correlation_id
-            != self._context.correlation_id
-        ):
-            raise ValueError(
-                "Evidence correlation does not match UnitOfWork"
-            )
+        if envelope.correlation_id != self._context.correlation_id:
+            raise ValueError("Evidence correlation does not match UnitOfWork")
 
         if not record.payload_hash_matches():
-            raise ValueError(
-                "Evidence payload hash does not match canonical payload"
-            )
+            raise ValueError("Evidence payload hash does not match canonical payload")
 
         await self._connection().execute(
             evidence_record.insert().values(
@@ -97,9 +81,7 @@ class PostgresEvidenceRepository:
             evidence_record.c.id == record_id.value,
         )
 
-        row = (
-            await self._connection().execute(statement)
-        ).mappings().one_or_none()
+        row = (await self._connection().execute(statement)).mappings().one_or_none()
 
         if row is None:
             return None
@@ -117,9 +99,7 @@ def _evidence_from_row(
         audit_record_id=row["audit_record_id"],
         transaction_id=row["transaction_id"],
         actor_id=ActorId(row["actor_id"]),
-        correlation_id=CorrelationId(
-            row["correlation_id"]
-        ),
+        correlation_id=CorrelationId(row["correlation_id"]),
         evidence_type=row["evidence_type"],
         occurred_at=row["occurred_at"],
         signed_at=row["signed_at"],

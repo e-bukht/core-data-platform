@@ -8,25 +8,16 @@ from core_platform.infrastructure.security.secrets import (
     EnvironmentSecretProvider,
 )
 
-RUNTIME_DATABASE_URL_SECRET = SecretReference(
-    "database/runtime-url"
-)
+RUNTIME_DATABASE_URL_SECRET = SecretReference("database/runtime-url")
 
-MIGRATION_DATABASE_URL_SECRET = SecretReference(
-    "database/migration-url"
-)
+MIGRATION_DATABASE_URL_SECRET = SecretReference("database/migration-url")
 
-EVIDENCE_SIGNING_PRIVATE_KEY_SECRET = SecretReference(
-    "evidence/signing-private-key"
-)
+EVIDENCE_SIGNING_PRIVATE_KEY_SECRET = SecretReference("evidence/signing-private-key")
 
 _SECRET_BINDINGS = {
-    RUNTIME_DATABASE_URL_SECRET.name:
-        "CORE_PLATFORM_DATABASE_URL",
-    MIGRATION_DATABASE_URL_SECRET.name:
-        "CORE_PLATFORM_MIGRATION_DATABASE_URL",
-    EVIDENCE_SIGNING_PRIVATE_KEY_SECRET.name:
-        "CORE_PLATFORM_EVIDENCE_SIGNING_PRIVATE_KEY_B64",
+    RUNTIME_DATABASE_URL_SECRET.name: "CORE_PLATFORM_DATABASE_URL",
+    MIGRATION_DATABASE_URL_SECRET.name: "CORE_PLATFORM_MIGRATION_DATABASE_URL",
+    EVIDENCE_SIGNING_PRIVATE_KEY_SECRET.name: "CORE_PLATFORM_EVIDENCE_SIGNING_PRIVATE_KEY_B64",
 }
 
 
@@ -43,26 +34,23 @@ class _SecretSourceSettings(BaseSettings):
     )
 
 
-def build_environment_secret_provider(
-) -> EnvironmentSecretProvider:
+def build_environment_secret_provider() -> EnvironmentSecretProvider:
     source = _SecretSourceSettings()
 
     resolved: dict[str, str] = {}
 
     if source.database_url is not None:
-        resolved["CORE_PLATFORM_DATABASE_URL"] = (
-            source.database_url.get_secret_value()
-        )
+        resolved["CORE_PLATFORM_DATABASE_URL"] = source.database_url.get_secret_value()
 
     if source.migration_database_url is not None:
-        resolved[
-            "CORE_PLATFORM_MIGRATION_DATABASE_URL"
-        ] = source.migration_database_url.get_secret_value()
+        resolved["CORE_PLATFORM_MIGRATION_DATABASE_URL"] = (
+            source.migration_database_url.get_secret_value()
+        )
 
     if source.evidence_signing_private_key_b64 is not None:
-        resolved[
-            "CORE_PLATFORM_EVIDENCE_SIGNING_PRIVATE_KEY_B64"
-        ] = source.evidence_signing_private_key_b64.get_secret_value()
+        resolved["CORE_PLATFORM_EVIDENCE_SIGNING_PRIVATE_KEY_B64"] = (
+            source.evidence_signing_private_key_b64.get_secret_value()
+        )
 
     return EnvironmentSecretProvider(
         bindings=_SECRET_BINDINGS,

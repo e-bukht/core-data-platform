@@ -65,9 +65,7 @@ class ContextTrustService:
                 correlation_id=str(correlation_id),
             )
 
-        authentication = await self._authenticator.authenticate(
-            token
-        )
+        authentication = await self._authenticator.authenticate(token)
 
         actor = await self._repository.resolve_actor(
             authentication.issuer,
@@ -93,9 +91,7 @@ class ContextTrustService:
             correlation_id,
         )
 
-        tenant = await self._repository.get_tenant(
-            tenant_id
-        )
+        tenant = await self._repository.get_tenant(tenant_id)
 
         if tenant is None:
             raise AuthorizationError(
@@ -118,10 +114,7 @@ class ContextTrustService:
             actor.actor_id,
         )
 
-        if (
-            membership is None
-            or not membership.is_active_at(instant)
-        ):
+        if membership is None or not membership.is_active_at(instant):
             raise AuthorizationError(
                 "TENANT.ACCESS.DENIED",
                 "Tenant access denied",
@@ -153,13 +146,11 @@ class ContextTrustService:
         break_glass: BreakGlassElevationContext | None = None
 
         if not decision.allowed:
-            candidates = (
-                await self._break_glass_repository.list_candidate_grants(
-                    tenant_id,
-                    actor.actor_id,
-                    capability_code,
-                    now=instant,
-                )
+            candidates = await self._break_glass_repository.list_candidate_grants(
+                tenant_id,
+                actor.actor_id,
+                capability_code,
+                now=instant,
             )
 
             break_glass_request = BreakGlassRequest(
@@ -179,9 +170,7 @@ class ContextTrustService:
                 )
 
                 if break_glass_decision.allowed:
-                    break_glass = (
-                        break_glass_decision.elevation
-                    )
+                    break_glass = break_glass_decision.elevation
                     break
 
             if break_glass is None:
@@ -206,9 +195,7 @@ class ContextTrustService:
 
         if break_glass is not None:
             if self._break_glass_activation_recorder is None:
-                raise RuntimeError(
-                    "Break-glass activation recorder is not configured"
-                )
+                raise RuntimeError("Break-glass activation recorder is not configured")
             await self._break_glass_activation_recorder.record(context)
 
         return context
@@ -235,9 +222,7 @@ class ContextTrustService:
             )
 
         try:
-            return TenantId(
-                UUID(selector)
-            )
+            return TenantId(UUID(selector))
         except ValueError as exc:
             raise ValidationError(
                 "TENANT.ID.INVALID",

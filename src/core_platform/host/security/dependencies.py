@@ -27,12 +27,8 @@ def _break_glass_log_fields(
 
     return {
         "break_glass": True,
-        "break_glass_grant_id": str(
-            elevation.grant_id.value
-        ),
-        "break_glass_scope_kind": (
-            elevation.scope.kind.value
-        ),
+        "break_glass_grant_id": str(elevation.grant_id.value),
+        "break_glass_scope_kind": (elevation.scope.kind.value),
     }
 
 
@@ -91,9 +87,7 @@ def require_capability(
             )
             raise
 
-        break_glass_log_fields = (
-            _break_glass_log_fields(context)
-        )
+        break_glass_log_fields = _break_glass_log_fields(context)
 
         bind_contextvars(
             correlation_id=str(context.correlation_id),

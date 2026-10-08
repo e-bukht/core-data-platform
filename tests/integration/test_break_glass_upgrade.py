@@ -56,9 +56,7 @@ def test_evidence_schema_upgrades_exactly_to_break_glass(
     image: str,
 ) -> None:
     with PostgresContainer(image) as postgres:
-        migration_url, runtime_url = provision_roles(
-            admin_url(postgres)
-        )
+        migration_url, runtime_url = provision_roles(admin_url(postgres))
 
         # ------------------------------------------------------
         # 1. Establish exact 0004 Evidence boundary.
@@ -69,9 +67,7 @@ def test_evidence_schema_upgrades_exactly_to_break_glass(
             "0004_evidence",
         )
 
-        migration_engine = create_engine(
-            migration_url
-        )
+        migration_engine = create_engine(migration_url)
 
         try:
             with migration_engine.begin() as connection:
@@ -257,12 +253,8 @@ def test_evidence_schema_upgrades_exactly_to_break_glass(
             "0005_break_glass",
         )
 
-        migration_engine = create_engine(
-            migration_url
-        )
-        runtime_engine = create_engine(
-            runtime_url
-        )
+        migration_engine = create_engine(migration_url)
+        runtime_engine = create_engine(runtime_url)
 
         try:
             with migration_engine.connect() as connection:
@@ -296,14 +288,8 @@ def test_evidence_schema_upgrades_exactly_to_break_glass(
                 )
 
                 assert revision == "0005_break_glass"
-                assert (
-                    break_glass_relation
-                    == "platform.break_glass_grant"
-                )
-                assert (
-                    evidence_relation
-                    == "platform.evidence_record"
-                )
+                assert break_glass_relation == "platform.break_glass_grant"
+                assert evidence_relation == "platform.evidence_record"
 
             # --------------------------------------------------
             # 3. Existing Evidence must be preserved exactly.
@@ -351,24 +337,14 @@ def test_evidence_schema_upgrades_exactly_to_break_glass(
             assert str(evidence["id"]) == EVIDENCE_ID
             assert str(evidence["tenant_id"]) == TENANT_ID
             assert str(evidence["audit_record_id"]) == AUDIT_ID
-            assert (
-                str(evidence["transaction_id"])
-                == TRANSACTION_ID
-            )
+            assert str(evidence["transaction_id"]) == TRANSACTION_ID
             assert str(evidence["actor_id"]) == ACTOR_ID
-            assert (
-                str(evidence["correlation_id"])
-                == CORRELATION_ID
-            )
+            assert str(evidence["correlation_id"]) == CORRELATION_ID
             assert evidence["envelope_version"] == 1
-            assert evidence["evidence_type"] == (
-                "transaction.audit"
-            )
+            assert evidence["evidence_type"] == ("transaction.audit")
             assert evidence["payload_hash"] == VALID_HASH
             assert evidence["signature_algorithm"] == "Ed25519"
-            assert evidence["key_id"] == (
-                "upgrade-break-glass-key"
-            )
+            assert evidence["key_id"] == ("upgrade-break-glass-key")
             assert evidence["payload_hex"] == "7b7d"
             assert evidence["signature_hex"] == "00"
 
@@ -459,10 +435,7 @@ def test_evidence_schema_upgrades_exactly_to_break_glass(
             assert str(grant["id"]) == BREAK_GLASS_ID
             assert str(grant["tenant_id"]) == TENANT_ID
             assert str(grant["actor_id"]) == ACTOR_ID
-            assert (
-                str(grant["issued_by_actor_id"])
-                == ISSUER_ID
-            )
+            assert str(grant["issued_by_actor_id"]) == ISSUER_ID
             assert grant["status"] == "ACTIVE"
             assert grant["version"] == 0
 

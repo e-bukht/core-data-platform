@@ -17,9 +17,7 @@ pytestmark = pytest.mark.integration
 
 async def _query() -> tuple[int, str | None]:
     provider = build_environment_secret_provider()
-    url = provider.get_secret(
-        RUNTIME_DATABASE_URL_SECRET
-    ).reveal_text()
+    url = provider.get_secret(RUNTIME_DATABASE_URL_SECRET).reveal_text()
     engine = create_async_engine(url)
     try:
         async with engine.connect() as connection:

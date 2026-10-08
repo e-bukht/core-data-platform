@@ -71,16 +71,12 @@ class ObservabilityRuntime:
                 endpoint=_signal_endpoint(config.otlp_endpoint, "v1/traces")
             )
 
-        tracer_provider.add_span_processor(
-            BatchSpanProcessor(active_span_exporter)
-        )
+        tracer_provider.add_span_processor(BatchSpanProcessor(active_span_exporter))
 
         active_metric_reader = metric_reader
         if active_metric_reader is None:
             active_metric_reader = PeriodicExportingMetricReader(
-                OTLPMetricExporter(
-                    endpoint=_signal_endpoint(config.otlp_endpoint, "v1/metrics")
-                ),
+                OTLPMetricExporter(endpoint=_signal_endpoint(config.otlp_endpoint, "v1/metrics")),
                 export_interval_millis=config.metric_export_interval_millis,
             )
 

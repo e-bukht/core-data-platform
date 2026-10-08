@@ -32,9 +32,7 @@ router = APIRouter(
 
 
 class BreakGlassScopeRequest(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid"
-    )
+    model_config = ConfigDict(extra="forbid")
 
     kind: BreakGlassScopeKind
     resource_type: str | None = None
@@ -42,23 +40,15 @@ class BreakGlassScopeRequest(BaseModel):
 
 
 class BreakGlassIssueRequest(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid"
-    )
+    model_config = ConfigDict(extra="forbid")
 
     actor_id: str
-    capabilities: tuple[str, ...] = Field(
-        min_length=1
-    )
+    capabilities: tuple[str, ...] = Field(min_length=1)
     scope: BreakGlassScopeRequest
-    reason: str = Field(
-        min_length=1
-    )
+    reason: str = Field(min_length=1)
     valid_from: datetime
     valid_until: datetime
-    accepted_acr_values: frozenset[str] = (
-        frozenset()
-    )
+    accepted_acr_values: frozenset[str] = frozenset()
     required_amr: frozenset[str] = frozenset()
 
 
@@ -73,18 +63,12 @@ def _issue_command(
     correlation_id: str,
 ) -> BreakGlassIssueCommand:
     try:
-        actor_id = ActorId.parse(
-            payload.actor_id
-        )
+        actor_id = ActorId.parse(payload.actor_id)
 
         scope = BreakGlassScope(
             kind=payload.scope.kind,
-            resource_type=(
-                payload.scope.resource_type
-            ),
-            resource_id=(
-                payload.scope.resource_id
-            ),
+            resource_type=(payload.scope.resource_type),
+            resource_id=(payload.scope.resource_id),
         )
     except ValueError as exc:
         raise ValidationError(
@@ -100,9 +84,7 @@ def _issue_command(
         reason=payload.reason,
         valid_from=payload.valid_from,
         valid_until=payload.valid_until,
-        accepted_acr_values=(
-            payload.accepted_acr_values
-        ),
+        accepted_acr_values=(payload.accepted_acr_values),
         required_amr=payload.required_amr,
     )
 
@@ -117,22 +99,14 @@ async def issue_break_glass_grant(
     request: Request,
     context: Annotated[
         ExecutionContext,
-        Depends(
-            require_capability(
-                BREAK_GLASS_MANAGEMENT_CAPABILITY
-            )
-        ),
+        Depends(require_capability(BREAK_GLASS_MANAGEMENT_CAPABILITY)),
     ],
 ) -> BreakGlassIssueResponse:
-    service: BreakGlassLifecycleService = (
-        request.app.state.break_glass_lifecycle
-    )
+    service: BreakGlassLifecycleService = request.app.state.break_glass_lifecycle
 
     command = _issue_command(
         payload,
-        correlation_id=str(
-            context.correlation_id
-        ),
+        correlation_id=str(context.correlation_id),
     )
 
     result = await service.issue(
@@ -141,17 +115,13 @@ async def issue_break_glass_grant(
     )
 
     return BreakGlassIssueResponse(
-        grant_id=str(
-            result.grant_id
-        ),
+        grant_id=str(result.grant_id),
         version=result.version,
     )
 
 
 class BreakGlassTransitionRequest(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid"
-    )
+    model_config = ConfigDict(extra="forbid")
 
     expected_version: int
     transition_reason: str
@@ -168,9 +138,7 @@ def _parse_grant_id(
     correlation_id: str,
 ) -> BreakGlassGrantId:
     try:
-        return BreakGlassGrantId(
-            UUID(raw)
-        )
+        return BreakGlassGrantId(UUID(raw))
     except ValueError as exc:
         raise ValidationError(
             "BREAK_GLASS.TRANSITION.INVALID",
@@ -189,22 +157,14 @@ async def suspend_break_glass_grant(
     request: Request,
     context: Annotated[
         ExecutionContext,
-        Depends(
-            require_capability(
-                BREAK_GLASS_MANAGEMENT_CAPABILITY
-            )
-        ),
+        Depends(require_capability(BREAK_GLASS_MANAGEMENT_CAPABILITY)),
     ],
 ) -> BreakGlassTransitionResponse:
-    service: BreakGlassLifecycleService = (
-        request.app.state.break_glass_lifecycle
-    )
+    service: BreakGlassLifecycleService = request.app.state.break_glass_lifecycle
 
     parsed_grant_id = _parse_grant_id(
         grant_id,
-        correlation_id=str(
-            context.correlation_id
-        ),
+        correlation_id=str(context.correlation_id),
     )
 
     version = await service.suspend(
@@ -215,9 +175,7 @@ async def suspend_break_glass_grant(
     )
 
     return BreakGlassTransitionResponse(
-        grant_id=str(
-            parsed_grant_id
-        ),
+        grant_id=str(parsed_grant_id),
         version=version,
     )
 
@@ -232,22 +190,14 @@ async def resume_break_glass_grant(
     request: Request,
     context: Annotated[
         ExecutionContext,
-        Depends(
-            require_capability(
-                BREAK_GLASS_MANAGEMENT_CAPABILITY
-            )
-        ),
+        Depends(require_capability(BREAK_GLASS_MANAGEMENT_CAPABILITY)),
     ],
 ) -> BreakGlassTransitionResponse:
-    service: BreakGlassLifecycleService = (
-        request.app.state.break_glass_lifecycle
-    )
+    service: BreakGlassLifecycleService = request.app.state.break_glass_lifecycle
 
     parsed_grant_id = _parse_grant_id(
         grant_id,
-        correlation_id=str(
-            context.correlation_id
-        ),
+        correlation_id=str(context.correlation_id),
     )
 
     version = await service.resume(
@@ -258,17 +208,13 @@ async def resume_break_glass_grant(
     )
 
     return BreakGlassTransitionResponse(
-        grant_id=str(
-            parsed_grant_id
-        ),
+        grant_id=str(parsed_grant_id),
         version=version,
     )
 
 
 class BreakGlassRevokeRequest(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid"
-    )
+    model_config = ConfigDict(extra="forbid")
 
     expected_version: int
     expected_current_status: BreakGlassGrantStatus
@@ -285,37 +231,25 @@ async def revoke_break_glass_grant(
     request: Request,
     context: Annotated[
         ExecutionContext,
-        Depends(
-            require_capability(
-                BREAK_GLASS_MANAGEMENT_CAPABILITY
-            )
-        ),
+        Depends(require_capability(BREAK_GLASS_MANAGEMENT_CAPABILITY)),
     ],
 ) -> BreakGlassTransitionResponse:
-    service: BreakGlassLifecycleService = (
-        request.app.state.break_glass_lifecycle
-    )
+    service: BreakGlassLifecycleService = request.app.state.break_glass_lifecycle
 
     parsed_grant_id = _parse_grant_id(
         grant_id,
-        correlation_id=str(
-            context.correlation_id
-        ),
+        correlation_id=str(context.correlation_id),
     )
 
     version = await service.revoke(
         context=context,
         grant_id=parsed_grant_id,
         expected_version=payload.expected_version,
-        expected_current_status=(
-            payload.expected_current_status
-        ),
+        expected_current_status=(payload.expected_current_status),
         transition_reason=payload.transition_reason,
     )
 
     return BreakGlassTransitionResponse(
-        grant_id=str(
-            parsed_grant_id
-        ),
+        grant_id=str(parsed_grant_id),
         version=version,
     )

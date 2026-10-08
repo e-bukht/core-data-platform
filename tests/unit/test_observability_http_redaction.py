@@ -41,7 +41,6 @@ def test_http_telemetry_does_not_expose_sensitive_request_data(
     )
 
     settings = Settings(
-
         environment="test",
         otel_enabled=True,
     )
@@ -64,9 +63,7 @@ def test_http_telemetry_does_not_expose_sensitive_request_data(
     assert response.status_code == 200
 
     server_spans = [
-        span
-        for span in span_exporter.get_finished_spans()
-        if span.kind is SpanKind.SERVER
+        span for span in span_exporter.get_finished_spans() if span.kind is SpanKind.SERVER
     ]
     assert len(server_spans) == 1
 

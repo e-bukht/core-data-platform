@@ -29,9 +29,7 @@ def _require_aware(
     field_name: str,
 ) -> None:
     if value.tzinfo is None or value.utcoffset() is None:
-        raise ValueError(
-            f"{field_name} must be timezone-aware"
-        )
+        raise ValueError(f"{field_name} must be timezone-aware")
 
 
 def _normalize_required(
@@ -42,9 +40,7 @@ def _normalize_required(
     normalized = value.strip()
 
     if not normalized:
-        raise ValueError(
-            f"{field_name} must not be empty"
-        )
+        raise ValueError(f"{field_name} must not be empty")
 
     return normalized
 
@@ -54,16 +50,10 @@ def _normalize_string_set(
     *,
     field_name: str,
 ) -> frozenset[str]:
-    normalized = frozenset(
-        value.strip()
-        for value in values
-        if value.strip()
-    )
+    normalized = frozenset(value.strip() for value in values if value.strip())
 
     if len(normalized) != len(values):
-        raise ValueError(
-            f"{field_name} must not contain empty values"
-        )
+        raise ValueError(f"{field_name} must not contain empty values")
 
     return normalized
 
@@ -75,53 +65,29 @@ class BreakGlassScope:
     resource_id: str | None = None
 
     def __post_init__(self) -> None:
-        resource_type = (
-            None
-            if self.resource_type is None
-            else self.resource_type.strip()
-        )
-        resource_id = (
-            None
-            if self.resource_id is None
-            else self.resource_id.strip()
-        )
+        resource_type = None if self.resource_type is None else self.resource_type.strip()
+        resource_id = None if self.resource_id is None else self.resource_id.strip()
 
         if resource_type == "":
-            raise ValueError(
-                "resource_type must not be empty"
-            )
+            raise ValueError("resource_type must not be empty")
 
         if resource_id == "":
-            raise ValueError(
-                "resource_id must not be empty"
-            )
+            raise ValueError("resource_id must not be empty")
 
         if self.kind is BreakGlassScopeKind.TENANT:
-            if (
-                resource_type is not None
-                or resource_id is not None
-            ):
-                raise ValueError(
-                    "TENANT scope must not define resource fields"
-                )
+            if resource_type is not None or resource_id is not None:
+                raise ValueError("TENANT scope must not define resource fields")
 
         elif self.kind is BreakGlassScopeKind.RESOURCE_TYPE:
             if resource_type is None:
-                raise ValueError(
-                    "RESOURCE_TYPE scope requires resource_type"
-                )
+                raise ValueError("RESOURCE_TYPE scope requires resource_type")
             if resource_id is not None:
-                raise ValueError(
-                    "RESOURCE_TYPE scope must not define resource_id"
-                )
+                raise ValueError("RESOURCE_TYPE scope must not define resource_id")
 
-        elif (
-            self.kind is BreakGlassScopeKind.RESOURCE
-            and (resource_type is None or resource_id is None)
+        elif self.kind is BreakGlassScopeKind.RESOURCE and (
+            resource_type is None or resource_id is None
         ):
-            raise ValueError(
-                "RESOURCE scope requires resource_type and resource_id"
-            )
+            raise ValueError("RESOURCE scope requires resource_type and resource_id")
 
         object.__setattr__(
             self,
@@ -146,10 +112,7 @@ class BreakGlassScope:
         if self.kind is BreakGlassScopeKind.RESOURCE_TYPE:
             return resource_type == self.resource_type
 
-        return (
-            resource_type == self.resource_type
-            and resource_id == self.resource_id
-        )
+        return resource_type == self.resource_type and resource_id == self.resource_id
 
 
 @dataclass(frozen=True, slots=True)
@@ -173,28 +136,16 @@ class BreakGlassGrant:
             field_name="reason",
         )
 
-        capabilities = tuple(
-            capability.strip()
-            for capability in self.capabilities
-        )
+        capabilities = tuple(capability.strip() for capability in self.capabilities)
 
         if not capabilities:
-            raise ValueError(
-                "capabilities must not be empty"
-            )
+            raise ValueError("capabilities must not be empty")
 
-        if any(
-            not capability
-            for capability in capabilities
-        ):
-            raise ValueError(
-                "capabilities must not contain empty values"
-            )
+        if any(not capability for capability in capabilities):
+            raise ValueError("capabilities must not contain empty values")
 
         if len(set(capabilities)) != len(capabilities):
-            raise ValueError(
-                "capabilities must not contain duplicates"
-            )
+            raise ValueError("capabilities must not contain duplicates")
 
         accepted_acr_values = _normalize_string_set(
             self.accepted_acr_values,
@@ -205,13 +156,8 @@ class BreakGlassGrant:
             field_name="required_amr",
         )
 
-        if (
-            not accepted_acr_values
-            and not required_amr
-        ):
-            raise ValueError(
-                "break-glass grant requires elevated authentication assurance"
-            )
+        if not accepted_acr_values and not required_amr:
+            raise ValueError("break-glass grant requires elevated authentication assurance")
 
         _require_aware(
             self.valid_from,
@@ -223,9 +169,7 @@ class BreakGlassGrant:
         )
 
         if self.valid_until <= self.valid_from:
-            raise ValueError(
-                "valid_until must be after valid_from"
-            )
+            raise ValueError("valid_until must be after valid_from")
 
         object.__setattr__(
             self,
@@ -299,9 +243,7 @@ class BreakGlassElevationContext:
         )
 
         if self.activated_at >= self.valid_until:
-            raise ValueError(
-                "break-glass elevation must expire after activation"
-            )
+            raise ValueError("break-glass elevation must expire after activation")
 
         object.__setattr__(
             self,

@@ -120,6 +120,7 @@ async def assert_evidence_persisted(
     assert bytes(row["canonical_payload"]) == record.canonical_payload
     assert bytes(row["signature"]) == record.signature
 
+
 async def assert_outbox_persisted(
     database: Database,
     message: OutboxMessage,
@@ -177,9 +178,7 @@ async def assert_outbox_persisted(
     assert row["published_at"] == message.published_at
     assert row["correlation_id"] == envelope.correlation_id.value
     assert row["causation_id"] == (
-        envelope.causation_id.value
-        if envelope.causation_id is not None
-        else None
+        envelope.causation_id.value if envelope.causation_id is not None else None
     )
     assert row["aggregate_type"] == envelope.aggregate_type
     assert row["aggregate_id"] == envelope.aggregate_id
@@ -231,13 +230,12 @@ async def assert_inbox_persisted(
     assert row["message_type"] == message.message_type
     assert row["correlation_id"] == message.correlation_id.value
     assert row["causation_id"] == (
-        message.causation_id.value
-        if message.causation_id is not None
-        else None
+        message.causation_id.value if message.causation_id is not None else None
     )
     assert row["payload_hash"] == message.payload_hash
     assert row["received_at"] == message.received_at
     assert row["processed_at"] == message.processed_at
+
 
 async def assert_cross_tenant_denied(
     database: Database,

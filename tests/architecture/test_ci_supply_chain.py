@@ -22,11 +22,7 @@ def _job_block(workflow: str, job_name: str) -> str:
         if candidate_end != -1:
             candidate = workflow[next_job + 3 : candidate_end]
 
-            if (
-                candidate
-                and "\n" not in candidate
-                and candidate.strip() == candidate
-            ):
+            if candidate and "\n" not in candidate and candidate.strip() == candidate:
                 return workflow[start:next_job]
 
         next_job = workflow.find("\n  ", next_job + 3)
@@ -137,9 +133,6 @@ def test_release_artifact_is_commit_bound_sbom_bound_and_attested() -> None:
         "- name: Upload immutable commit-addressable release bundle",
     )
 
-    positions = [
-        release.index(step)
-        for step in ordered_steps
-    ]
+    positions = [release.index(step) for step in ordered_steps]
 
     assert positions == sorted(positions)

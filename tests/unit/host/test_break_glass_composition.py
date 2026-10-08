@@ -95,6 +95,7 @@ def test_factory_rejects_invalid_private_key_without_leaking_value() -> None:
         )
     assert invalid_secret not in str(err.value)
 
+
 # === C-I4-12ae SHARED RUNTIME ===
 
 
@@ -107,15 +108,9 @@ def test_runtime_composition_shares_signer_and_uow_factory() -> None:
         encryption_algorithm=serialization.NoEncryption(),
     )
 
-    provider = _provider(
-        base64.b64encode(
-            private_der
-        ).decode("ascii")
-    )
+    provider = _provider(base64.b64encode(private_der).decode("ascii"))
 
-    database = Mock(
-        spec=Database
-    )
+    database = Mock(spec=Database)
 
     runtime = build_break_glass_runtime(
         settings=Settings(
@@ -138,29 +133,31 @@ def test_runtime_composition_shares_signer_and_uow_factory() -> None:
         BreakGlassLifecycleService,
     )
 
-    assert (
-        recorder._persistence._factory
-        is lifecycle._persistence._factory
+    from core_platform.infrastructure.persistence.break_glass_activation_persistence import (
+        PostgresBreakGlassActivationPersistence,
     )
-    assert (
-        recorder._persistence._factory._database
-        is database
+    from core_platform.infrastructure.persistence.break_glass_lifecycle_persistence import (
+        PostgresBreakGlassLifecyclePersistence,
     )
 
-    assert (
-        recorder._evidence_factory._signer
-        is lifecycle._evidence_factory._signer
+    activation_persistence = recorder._persistence
+    lifecycle_persistence = lifecycle._persistence
+    assert isinstance(
+        activation_persistence,
+        PostgresBreakGlassActivationPersistence,
     )
+    assert isinstance(
+        lifecycle_persistence,
+        PostgresBreakGlassLifecyclePersistence,
+    )
+    assert activation_persistence._factory is lifecycle_persistence._factory
+    assert activation_persistence._factory._database is database
 
-    assert recorder._evidence_factory._signer.key_id == (
-        "test-evidence-key-02"
-    )
+    assert recorder._evidence_factory._signer is lifecycle._evidence_factory._signer
 
-    signed = asyncio.run(
-        recorder._evidence_factory._signer.sign(
-            b"shared-runtime-composition"
-        )
-    )
+    assert recorder._evidence_factory._signer.key_id == ("test-evidence-key-02")
+
+    signed = asyncio.run(recorder._evidence_factory._signer.sign(b"shared-runtime-composition"))
 
     key.public_key().verify(
         signed,

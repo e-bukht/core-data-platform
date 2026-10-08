@@ -20,9 +20,7 @@ from core_platform.transaction_kernel.models import (
 )
 
 
-class PostgresBreakGlassLifecyclePersistence(
-    BreakGlassLifecyclePersistence
-):
+class PostgresBreakGlassLifecyclePersistence(BreakGlassLifecyclePersistence):
     def __init__(
         self,
         factory: PostgresUnitOfWorkFactory,
@@ -38,26 +36,15 @@ class PostgresBreakGlassLifecyclePersistence(
         audit_record: AuditRecord,
         evidence_record: EvidenceRecord,
     ) -> int:
-        if audit_record.transaction_id != (
-            transaction_context.transaction_id
-        ):
+        if audit_record.transaction_id != (transaction_context.transaction_id):
             raise ValueError(
-                "Break-glass lifecycle audit transaction "
-                "does not match persistence context"
+                "Break-glass lifecycle audit transaction does not match persistence context"
             )
 
-        if (
-            evidence_record.envelope.audit_record_id
-            != audit_record.record_id.value
-        ):
-            raise ValueError(
-                "Break-glass lifecycle evidence does not "
-                "reference transition audit"
-            )
+        if evidence_record.envelope.audit_record_id != audit_record.record_id.value:
+            raise ValueError("Break-glass lifecycle evidence does not reference transition audit")
 
-        uow = self._factory.create(
-            transaction_context
-        )
+        uow = self._factory.create(transaction_context)
 
         async with uow as active:
             version = await active.break_glass_lifecycle.issue(
@@ -65,13 +52,9 @@ class PostgresBreakGlassLifecyclePersistence(
                 issued_at=issued_at,
             )
 
-            await active.audit.append(
-                audit_record
-            )
+            await active.audit.append(audit_record)
 
-            await active.evidence.append(
-                evidence_record
-            )
+            await active.evidence.append(evidence_record)
 
             await active.commit()
 
@@ -89,47 +72,28 @@ class PostgresBreakGlassLifecyclePersistence(
         audit_record: AuditRecord,
         evidence_record: EvidenceRecord,
     ) -> int:
-        if audit_record.transaction_id != (
-            transaction_context.transaction_id
-        ):
+        if audit_record.transaction_id != (transaction_context.transaction_id):
             raise ValueError(
-                "Break-glass lifecycle audit transaction "
-                "does not match persistence context"
+                "Break-glass lifecycle audit transaction does not match persistence context"
             )
 
-        if (
-            evidence_record.envelope.audit_record_id
-            != audit_record.record_id.value
-        ):
-            raise ValueError(
-                "Break-glass lifecycle evidence does not "
-                "reference transition audit"
-            )
+        if evidence_record.envelope.audit_record_id != audit_record.record_id.value:
+            raise ValueError("Break-glass lifecycle evidence does not reference transition audit")
 
-        uow = self._factory.create(
-            transaction_context
-        )
+        uow = self._factory.create(transaction_context)
 
         async with uow as active:
-            new_version = (
-                await active.break_glass_lifecycle.transition_status(
-                    grant_id=grant_id,
-                    expected_version=expected_version,
-                    expected_current_status=(
-                        expected_current_status
-                    ),
-                    target_status=target_status,
-                    changed_at=changed_at,
-                )
+            new_version = await active.break_glass_lifecycle.transition_status(
+                grant_id=grant_id,
+                expected_version=expected_version,
+                expected_current_status=(expected_current_status),
+                target_status=target_status,
+                changed_at=changed_at,
             )
 
-            await active.audit.append(
-                audit_record
-            )
+            await active.audit.append(audit_record)
 
-            await active.evidence.append(
-                evidence_record
-            )
+            await active.evidence.append(evidence_record)
 
             await active.commit()
 

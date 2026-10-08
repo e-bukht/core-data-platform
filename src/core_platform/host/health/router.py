@@ -30,16 +30,12 @@ async def live() -> LivenessResponse:
 
 @router.get("/health/startup", response_model=StartupResponse)
 async def startup(request: Request, response: Response) -> StartupResponse:
-    startup_complete = bool(
-        getattr(request.app.state, "startup_complete", False)
-    )
+    startup_complete = bool(getattr(request.app.state, "startup_complete", False))
 
     if not startup_complete:
         response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
 
-    return StartupResponse(
-        status="started" if startup_complete else "starting"
-    )
+    return StartupResponse(status="started" if startup_complete else "starting")
 
 
 @router.get("/health/ready", response_model=ReadinessResponse)
@@ -50,9 +46,7 @@ async def ready(request: Request, response: Response) -> ReadinessResponse:
     if not db_state.ready:
         response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
 
-    return ReadinessResponse(
-        status="ready" if db_state.ready else "not_ready"
-    )
+    return ReadinessResponse(status="ready" if db_state.ready else "not_ready")
 
 
 @router.get("/version")

@@ -73,6 +73,7 @@ class GrantId:
     def __str__(self) -> str:
         return str(self.value)
 
+
 @dataclass(frozen=True, slots=True)
 class EvidenceRecordId:
     value: UUID

@@ -21,25 +21,13 @@ from core_platform.platform_kernel.break_glass import (
 )
 from core_platform.platform_kernel.ids import ActorId, TenantId
 
-TENANT_ID = TenantId(
-    UUID(
-        "00000000-0000-7800-8000-000000001001"
-    )
-)
+TENANT_ID = TenantId(UUID("00000000-0000-7800-8000-000000001001"))
 
-ACTOR_ID = ActorId(
-    UUID(
-        "00000000-0000-7800-8000-000000001002"
-    )
-)
+ACTOR_ID = ActorId(UUID("00000000-0000-7800-8000-000000001002"))
 
-GRANT_ID = UUID(
-    "00000000-0000-7800-8000-000000001003"
-)
+GRANT_ID = UUID("00000000-0000-7800-8000-000000001003")
 
-ISSUER_ID = UUID(
-    "00000000-0000-7800-8000-000000001004"
-)
+ISSUER_ID = UUID("00000000-0000-7800-8000-000000001004")
 
 NOW = datetime(
     2026,
@@ -70,12 +58,8 @@ def _row() -> RowMapping:
             "valid_from": NOW - timedelta(minutes=5),
             "valid_until": NOW + timedelta(minutes=20),
             "status": "ACTIVE",
-            "accepted_acr_values": [
-                "urn:core-platform:acr:elevated"
-            ],
-            "required_amr": [
-                "mfa"
-            ],
+            "accepted_acr_values": ["urn:core-platform:acr:elevated"],
+            "required_amr": ["mfa"],
             "version": 0,
             "created_at": NOW,
             "updated_at": NOW,
@@ -131,21 +115,13 @@ class _Database:
 
 
 def test_row_maps_to_domain_grant() -> None:
-    grant = _grant_from_row(
-        _row()
-    )
+    grant = _grant_from_row(_row())
 
     assert grant.tenant_id == TENANT_ID
     assert grant.actor_id == ACTOR_ID
-    assert grant.status is (
-        BreakGlassGrantStatus.ACTIVE
-    )
-    assert grant.scope.kind is (
-        BreakGlassScopeKind.RESOURCE
-    )
-    assert grant.scope.resource_type == (
-        "outbox-message"
-    )
+    assert grant.status is (BreakGlassGrantStatus.ACTIVE)
+    assert grant.scope.kind is (BreakGlassScopeKind.RESOURCE)
+    assert grant.scope.resource_type == ("outbox-message")
     assert grant.scope.resource_id == "message-1"
     assert grant.capabilities == (
         "platform.outbox.retry",
@@ -154,16 +130,12 @@ def test_row_maps_to_domain_grant() -> None:
 
 
 def test_repository_is_structural_port() -> None:
-    database = _Database(
-        []
-    )
+    database = _Database([])
 
-    repository: BreakGlassRepository = (
-        SqlBreakGlassRepository(
-            cast(
-                Database,
-                database,
-            )
+    repository: BreakGlassRepository = SqlBreakGlassRepository(
+        cast(
+            Database,
+            database,
         )
     )
 
@@ -171,9 +143,7 @@ def test_repository_is_structural_port() -> None:
 
 
 def test_repository_uses_tenant_transaction_and_candidate_filters() -> None:
-    database = _Database(
-        [_row()]
-    )
+    database = _Database([_row()])
 
     repository = SqlBreakGlassRepository(
         cast(
@@ -210,19 +180,11 @@ def test_repository_uses_tenant_transaction_and_candidate_filters() -> None:
 
 
 def test_repository_returns_all_candidates_in_database_order() -> None:
-    first = dict(
-        _row()
-    )
-    second = dict(
-        _row()
-    )
+    first = dict(_row())
+    second = dict(_row())
 
-    first["id"] = UUID(
-        "00000000-0000-7800-8000-000000001010"
-    )
-    second["id"] = UUID(
-        "00000000-0000-7800-8000-000000001011"
-    )
+    first["id"] = UUID("00000000-0000-7800-8000-000000001010")
+    second["id"] = UUID("00000000-0000-7800-8000-000000001011")
 
     database = _Database(
         [
@@ -247,19 +209,14 @@ def test_repository_returns_all_candidates_in_database_order() -> None:
         )
     )
 
-    assert tuple(
-        grant.grant_id.value
-        for grant in grants
-    ) == (
+    assert tuple(grant.grant_id.value for grant in grants) == (
         first["id"],
         second["id"],
     )
 
 
 def test_repository_rejects_naive_instant() -> None:
-    database = _Database(
-        []
-    )
+    database = _Database([])
 
     repository = SqlBreakGlassRepository(
         cast(
@@ -286,19 +243,13 @@ def test_repository_rejects_naive_instant() -> None:
             )
         )
     except ValueError as exc:
-        assert str(exc) == (
-            "now must be timezone-aware"
-        )
+        assert str(exc) == ("now must be timezone-aware")
     else:
-        raise AssertionError(
-            "Expected timezone validation failure"
-        )
+        raise AssertionError("Expected timezone validation failure")
 
 
 def test_repository_rejects_blank_capability() -> None:
-    database = _Database(
-        []
-    )
+    database = _Database([])
 
     repository = SqlBreakGlassRepository(
         cast(
@@ -317,10 +268,6 @@ def test_repository_rejects_blank_capability() -> None:
             )
         )
     except ValueError as exc:
-        assert str(exc) == (
-            "capability must not be empty"
-        )
+        assert str(exc) == ("capability must not be empty")
     else:
-        raise AssertionError(
-            "Expected capability validation failure"
-        )
+        raise AssertionError("Expected capability validation failure")

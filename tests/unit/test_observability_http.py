@@ -38,7 +38,6 @@ def test_fastapi_preserves_incoming_w3c_trace_context() -> None:
     )
 
     settings = Settings(
-
         environment="test",
         otel_enabled=True,
     )
@@ -58,9 +57,7 @@ def test_fastapi_preserves_incoming_w3c_trace_context() -> None:
     assert response.json() == {"status": "alive"}
 
     server_spans = [
-        span
-        for span in span_exporter.get_finished_spans()
-        if span.kind is SpanKind.SERVER
+        span for span in span_exporter.get_finished_spans() if span.kind is SpanKind.SERVER
     ]
 
     assert len(server_spans) == 1

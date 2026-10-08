@@ -44,9 +44,7 @@ NOW = datetime(
 
 
 def _selector_loop_factory() -> asyncio.AbstractEventLoop:
-    return asyncio.SelectorEventLoop(
-        selectors.SelectSelector()
-    )
+    return asyncio.SelectorEventLoop(selectors.SelectSelector())
 
 
 def _set_tenant(
@@ -326,14 +324,10 @@ def _seed_grants(
 async def _assert_repository(
     runtime_url: str,
 ) -> None:
-    database = Database(
-        runtime_url
-    )
+    database = Database(runtime_url)
 
     try:
-        repository = SqlBreakGlassRepository(
-            database
-        )
+        repository = SqlBreakGlassRepository(database)
 
         grants = await repository.list_candidate_grants(
             TenantId.parse(TENANT_A),
@@ -342,10 +336,7 @@ async def _assert_repository(
             now=NOW,
         )
 
-        ids = tuple(
-            str(grant.grant_id)
-            for grant in grants
-        )
+        ids = tuple(str(grant.grant_id) for grant in grants)
 
         assert ids == (
             CANDIDATE_1,
@@ -355,9 +346,7 @@ async def _assert_repository(
 
         # Prove that SQL did not perform domain scope
         # or authentication-assurance decisions.
-        assert grants[1].scope.resource_id == (
-            "different-message"
-        )
+        assert grants[1].scope.resource_id == ("different-message")
         assert grants[2].accepted_acr_values == frozenset(
             {
                 "urn:core-platform:acr:hardware-only",
@@ -395,34 +384,20 @@ def test_break_glass_repository_returns_all_and_only_sql_candidates(
     image: str,
 ) -> None:
     with PostgresContainer(image) as postgres:
-        migration_url, runtime_url = provision_roles(
-            admin_url(postgres)
-        )
+        migration_url, runtime_url = provision_roles(admin_url(postgres))
 
         run_alembic(
             migration_url,
             runtime_url,
         )
 
-        migration_engine = create_engine(
-            migration_url
-        )
+        migration_engine = create_engine(migration_url)
 
         try:
-            _seed_identity(
-                migration_engine
-            )
-            _seed_grants(
-                migration_engine
-            )
+            _seed_identity(migration_engine)
+            _seed_grants(migration_engine)
         finally:
             migration_engine.dispose()
 
-        with asyncio.Runner(
-            loop_factory=_selector_loop_factory
-        ) as runner:
-            runner.run(
-                _assert_repository(
-                    runtime_url
-                )
-            )
+        with asyncio.Runner(loop_factory=_selector_loop_factory) as runner:
+            runner.run(_assert_repository(runtime_url))

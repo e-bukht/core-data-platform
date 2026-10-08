@@ -87,22 +87,27 @@ def test_runtime_injects_real_durable_recorder() -> None:
 
             assert recorder._evidence_factory._signer.key_id == "test-key-01"
 
-            assert (
-                recorder._persistence._factory
-                is lifecycle._persistence._factory
+            from core_platform.infrastructure.persistence import (
+                break_glass_activation_persistence as activation_persistence_module,
             )
-            assert (
-                recorder._persistence._factory._database
-                is app.state.database
+            from core_platform.infrastructure.persistence import (
+                break_glass_lifecycle_persistence as lifecycle_persistence_module,
             )
-            assert (
-                recorder._persistence._factory._metrics
-                is app.state.observability.metrics
+
+            activation_persistence = recorder._persistence
+            lifecycle_persistence = lifecycle._persistence
+            assert isinstance(
+                activation_persistence,
+                activation_persistence_module.PostgresBreakGlassActivationPersistence,
             )
-            assert (
-                recorder._evidence_factory._signer
-                is lifecycle._evidence_factory._signer
+            assert isinstance(
+                lifecycle_persistence,
+                lifecycle_persistence_module.PostgresBreakGlassLifecyclePersistence,
             )
+            assert activation_persistence._factory is lifecycle_persistence._factory
+            assert activation_persistence._factory._database is app.state.database
+            assert activation_persistence._factory._metrics is app.state.observability.metrics
+            assert recorder._evidence_factory._signer is lifecycle._evidence_factory._signer
 
             assert app.state.startup_complete is True
         assert app.state.startup_complete is False
@@ -113,16 +118,16 @@ def test_runtime_injects_real_durable_recorder() -> None:
 def test_runtime_missing_key_id_fails_startup_and_disposes_database(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    from core_platform.host import main
+    from core_platform.infrastructure.persistence.database import Database
 
-    original_close = main.Database.close
+    original_close = Database.close
     closed = []
 
-    async def tracked_close(database: main.Database) -> None:
+    async def tracked_close(database: Database) -> None:
         closed.append(True)
         await original_close(database)
 
-    monkeypatch.setattr(main.Database, "close", tracked_close)
+    monkeypatch.setattr(Database, "close", tracked_close)
     app = create_app(
         settings=Settings(_env_file=None, evidence_signing_key_id=None),
         secret_provider=_secret_provider(_encoded_private_key()),
@@ -152,16 +157,16 @@ def test_runtime_unavailable_or_invalid_key_fails_closed(
     bad_key: str | None,
     expected_error: str,
 ) -> None:
-    from core_platform.host import main
+    from core_platform.infrastructure.persistence.database import Database
 
-    original_close = main.Database.close
+    original_close = Database.close
     closed = []
 
-    async def tracked_close(database: main.Database) -> None:
+    async def tracked_close(database: Database) -> None:
         closed.append(True)
         await original_close(database)
 
-    monkeypatch.setattr(main.Database, "close", tracked_close)
+    monkeypatch.setattr(Database, "close", tracked_close)
     app = create_app(
         settings=Settings(_env_file=None, evidence_signing_key_id="test-key-01"),
         secret_provider=_secret_provider(bad_key),

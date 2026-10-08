@@ -50,30 +50,17 @@ class PostgresBreakGlassLifecycleStore:
         grant: BreakGlassGrant,
         issued_at: datetime,
     ) -> int:
-        if (
-            issued_at.tzinfo is None
-            or issued_at.utcoffset() is None
-        ):
-            raise ValueError(
-                "issued_at must be timezone-aware"
-            )
+        if issued_at.tzinfo is None or issued_at.utcoffset() is None:
+            raise ValueError("issued_at must be timezone-aware")
 
         if grant.tenant_id != self._context.tenant_id:
-            raise ValueError(
-                "Break-glass grant tenant "
-                "does not match UnitOfWork"
-            )
+            raise ValueError("Break-glass grant tenant does not match UnitOfWork")
 
         if grant.issued_by_actor_id != self._context.actor_id:
-            raise ValueError(
-                "Break-glass grant issuer "
-                "does not match UnitOfWork actor"
-            )
+            raise ValueError("Break-glass grant issuer does not match UnitOfWork actor")
 
         if grant.status is not BreakGlassGrantStatus.ACTIVE:
-            raise ValueError(
-                "New break-glass grant must be ACTIVE"
-            )
+            raise ValueError("New break-glass grant must be ACTIVE")
 
         statement = (
             insert(break_glass_grant)
@@ -81,47 +68,25 @@ class PostgresBreakGlassLifecycleStore:
                 id=grant.grant_id.value,
                 tenant_id=grant.tenant_id.value,
                 actor_id=grant.actor_id.value,
-                issued_by_actor_id=(
-                    grant.issued_by_actor_id.value
-                ),
-                capabilities=list(
-                    grant.capabilities
-                ),
+                issued_by_actor_id=(grant.issued_by_actor_id.value),
+                capabilities=list(grant.capabilities),
                 scope_kind=grant.scope.kind.value,
-                resource_type=(
-                    grant.scope.resource_type
-                ),
-                resource_id=(
-                    grant.scope.resource_id
-                ),
+                resource_type=(grant.scope.resource_type),
+                resource_id=(grant.scope.resource_id),
                 reason=grant.reason,
                 valid_from=grant.valid_from,
                 valid_until=grant.valid_until,
                 status=grant.status.value,
-                accepted_acr_values=list(
-                    sorted(
-                        grant.accepted_acr_values
-                    )
-                ),
-                required_amr=list(
-                    sorted(
-                        grant.required_amr
-                    )
-                ),
+                accepted_acr_values=list(sorted(grant.accepted_acr_values)),
+                required_amr=list(sorted(grant.required_amr)),
                 version=0,
                 created_at=issued_at,
                 updated_at=issued_at,
             )
-            .returning(
-                break_glass_grant.c.version
-            )
+            .returning(break_glass_grant.c.version)
         )
 
-        version = (
-            await self._connection().execute(
-                statement
-            )
-        ).scalar_one()
+        version = (await self._connection().execute(statement)).scalar_one()
 
         return int(version)
 
@@ -135,17 +100,10 @@ class PostgresBreakGlassLifecycleStore:
         changed_at: datetime,
     ) -> int:
         if expected_version < 0:
-            raise ValueError(
-                "expected_version must be >= 0"
-            )
+            raise ValueError("expected_version must be >= 0")
 
-        if (
-            changed_at.tzinfo is None
-            or changed_at.utcoffset() is None
-        ):
-            raise ValueError(
-                "changed_at must be timezone-aware"
-            )
+        if changed_at.tzinfo is None or changed_at.utcoffset() is None:
+            raise ValueError("changed_at must be timezone-aware")
 
         connection = self._connection()
 
@@ -154,17 +112,12 @@ class PostgresBreakGlassLifecycleStore:
             break_glass_grant.c.valid_from,
             break_glass_grant.c.valid_until,
         ).where(
-            break_glass_grant.c.tenant_id
-            == self._context.tenant_id.value,
-            break_glass_grant.c.id
-            == grant_id.value,
-            break_glass_grant.c.version
-            == expected_version,
+            break_glass_grant.c.tenant_id == self._context.tenant_id.value,
+            break_glass_grant.c.id == grant_id.value,
+            break_glass_grant.c.version == expected_version,
         )
 
-        current = (
-            await connection.execute(statement)
-        ).one_or_none()
+        current = (await connection.execute(statement)).one_or_none()
 
         if current is None:
             raise ConcurrencyConflict(
@@ -173,9 +126,7 @@ class PostgresBreakGlassLifecycleStore:
                 expected_version=expected_version,
             )
 
-        current_status = BreakGlassGrantStatus(
-            current.status
-        )
+        current_status = BreakGlassGrantStatus(current.status)
 
         if current_status is not expected_current_status:
             raise ConcurrencyConflict(
@@ -184,23 +135,13 @@ class PostgresBreakGlassLifecycleStore:
                 expected_version=expected_version,
             )
 
-        if (
-            target_status is BreakGlassGrantStatus.ACTIVE
-            and not (
-                current.valid_from
-                <= changed_at
-                < current.valid_until
-            )
+        if target_status is BreakGlassGrantStatus.ACTIVE and not (
+            current.valid_from <= changed_at < current.valid_until
         ):
             raise BusinessRuleViolation(
                 "BREAK_GLASS.RESUME.OUTSIDE_VALIDITY_WINDOW",
-                (
-                    "Break-glass grant cannot be resumed "
-                    "outside its validity window"
-                ),
-                correlation_id=str(
-                    self._context.correlation_id
-                ),
+                ("Break-glass grant cannot be resumed outside its validity window"),
+                correlation_id=str(self._context.correlation_id),
             )
 
         require_break_glass_status_transition(

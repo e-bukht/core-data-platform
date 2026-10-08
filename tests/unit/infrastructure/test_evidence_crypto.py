@@ -51,9 +51,7 @@ def test_ed25519_verifier_detects_payload_tampering() -> None:
             private_key=private_key,
             key_id="key-1",
         )
-        verifier = Ed25519EvidenceVerifier(
-            public_keys={"key-1": private_key.public_key()}
-        )
+        verifier = Ed25519EvidenceVerifier(public_keys={"key-1": private_key.public_key()})
 
         signature = await signer.sign(b"original")
 
@@ -110,9 +108,7 @@ def test_ed25519_verifier_rejects_unsupported_algorithm() -> None:
             private_key=private_key,
             key_id="key-1",
         )
-        verifier = Ed25519EvidenceVerifier(
-            public_keys={"key-1": private_key.public_key()}
-        )
+        verifier = Ed25519EvidenceVerifier(public_keys={"key-1": private_key.public_key()})
 
         payload = b"evidence"
         signature = await signer.sign(payload)

@@ -59,10 +59,7 @@ def test_outbox_and_inbox_metrics_are_low_cardinality() -> None:
         assert points["core_platform.inbox.processed"][0].value == 1
 
         lookup_points = points["core_platform.inbox.lookup"]
-        lookup_results = {
-            point.attributes["result"]: point.value
-            for point in lookup_points
-        }
+        lookup_results = {point.attributes["result"]: point.value for point in lookup_points}
 
         assert lookup_results == {
             "found": 1,

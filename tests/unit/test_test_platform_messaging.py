@@ -19,9 +19,7 @@ def test_certification_message_transport_records_ordered_deliveries(
     cert_message_transport: RecordingMessageTransport,
 ) -> None:
     transaction = TransactionContext(
-        transaction_id=TransactionId(
-            UUID("00000000-0000-7000-8000-00000000c201")
-        ),
+        transaction_id=TransactionId(UUID("00000000-0000-7000-8000-00000000c201")),
         tenant_id=cert_execution_context.tenant_id,
         actor_id=cert_execution_context.actor_id,
         correlation_id=cert_execution_context.correlation_id,
@@ -32,9 +30,7 @@ def test_certification_message_transport_records_ordered_deliveries(
 
     envelope = create_message_envelope(
         context=transaction,
-        message_id=MessageId(
-            UUID("00000000-0000-7000-8000-00000000c202")
-        ),
+        message_id=MessageId(UUID("00000000-0000-7000-8000-00000000c202")),
         message_type="certification.message",
         schema_version=1,
         source="test-platform",

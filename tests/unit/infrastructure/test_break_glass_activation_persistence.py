@@ -45,31 +45,11 @@ NOW = datetime(
     tzinfo=UTC,
 )
 
-TENANT_ID = TenantId(
-    UUID(
-        "00000000-0000-7c00-8000-000000001001"
-    )
-)
-ACTOR_ID = ActorId(
-    UUID(
-        "00000000-0000-7c00-8000-000000001002"
-    )
-)
-CORRELATION_ID = CorrelationId(
-    UUID(
-        "00000000-0000-7c00-8000-000000001003"
-    )
-)
-TRANSACTION_ID = TransactionId(
-    UUID(
-        "00000000-0000-7c00-8000-000000001004"
-    )
-)
-AUDIT_ID = AuditRecordId(
-    UUID(
-        "00000000-0000-7c00-8000-000000001005"
-    )
-)
+TENANT_ID = TenantId(UUID("00000000-0000-7c00-8000-000000001001"))
+ACTOR_ID = ActorId(UUID("00000000-0000-7c00-8000-000000001002"))
+CORRELATION_ID = CorrelationId(UUID("00000000-0000-7c00-8000-000000001003"))
+TRANSACTION_ID = TransactionId(UUID("00000000-0000-7c00-8000-000000001004"))
+AUDIT_ID = AuditRecordId(UUID("00000000-0000-7c00-8000-000000001005"))
 
 
 def _transaction_context() -> TransactionContext:
@@ -94,9 +74,7 @@ def _audit() -> AuditRecord:
         capability="platform.outbox.retry",
         action="security.break-glass.activate",
         resource_type="BreakGlassGrant",
-        resource_id=(
-            "00000000-0000-7c00-8000-000000001006"
-        ),
+        resource_id=("00000000-0000-7c00-8000-000000001006"),
         outcome=AuditOutcome.SUCCESS,
         occurred_at=NOW,
         details={
@@ -113,30 +91,20 @@ def _evidence() -> EvidenceRecord:
     return EvidenceRecord(
         envelope=EvidenceEnvelope(
             envelope_version=1,
-            record_id=EvidenceRecordId(
-                UUID(
-                    "00000000-0000-7c00-8000-000000001007"
-                )
-            ),
+            record_id=EvidenceRecordId(UUID("00000000-0000-7c00-8000-000000001007")),
             tenant_id=TENANT_ID,
             audit_record_id=AUDIT_ID.value,
             transaction_id=TRANSACTION_ID.value,
             actor_id=ACTOR_ID,
             correlation_id=CORRELATION_ID,
-            evidence_type=(
-                "security.break-glass.activation"
-            ),
+            evidence_type=("security.break-glass.activation"),
             occurred_at=NOW,
             signed_at=NOW,
-            payload_hash=canonical_json_sha256(
-                payload
-            ),
+            payload_hash=canonical_json_sha256(payload),
             signature_algorithm="Ed25519",
             key_id="test-key",
         ),
-        canonical_payload=canonical_json_bytes(
-            payload
-        ),
+        canonical_payload=canonical_json_bytes(payload),
         signature=b"signature",
     )
 
@@ -155,14 +123,10 @@ class _AuditStore:
         self,
         record: AuditRecord,
     ) -> None:
-        self._events.append(
-            "audit"
-        )
+        self._events.append("audit")
 
         if self._fail:
-            raise RuntimeError(
-                "audit failure"
-            )
+            raise RuntimeError("audit failure")
 
 
 class _EvidenceStore:
@@ -179,14 +143,10 @@ class _EvidenceStore:
         self,
         record: EvidenceRecord,
     ) -> None:
-        self._events.append(
-            "evidence"
-        )
+        self._events.append("evidence")
 
         if self._fail:
-            raise RuntimeError(
-                "evidence failure"
-            )
+            raise RuntimeError("evidence failure")
 
 
 class _UnitOfWork:
@@ -209,9 +169,7 @@ class _UnitOfWork:
     async def __aenter__(
         self,
     ) -> Self:
-        self.events.append(
-            "enter"
-        )
+        self.events.append("enter")
         return self
 
     async def __aexit__(
@@ -220,16 +178,12 @@ class _UnitOfWork:
         exc_value: BaseException | None,
         traceback: TracebackType | None,
     ) -> None:
-        self.events.append(
-            "exit"
-        )
+        self.events.append("exit")
 
     async def commit(
         self,
     ) -> None:
-        self.events.append(
-            "commit"
-        )
+        self.events.append("commit")
 
 
 class _Factory:
@@ -256,18 +210,14 @@ def _persistence(
         _Factory(uow),
     )
 
-    return PostgresBreakGlassActivationPersistence(
-        factory
-    )
+    return PostgresBreakGlassActivationPersistence(factory)
 
 
 def test_persistence_orders_audit_evidence_then_commit() -> None:
     async def run() -> None:
         uow = _UnitOfWork()
 
-        await _persistence(
-            uow
-        ).persist(
+        await _persistence(uow).persist(
             transaction_context=_transaction_context(),
             audit_record=_audit(),
             evidence_record=_evidence(),
@@ -286,17 +236,13 @@ def test_persistence_orders_audit_evidence_then_commit() -> None:
 
 def test_evidence_failure_prevents_commit() -> None:
     async def run() -> None:
-        uow = _UnitOfWork(
-            fail_evidence=True
-        )
+        uow = _UnitOfWork(fail_evidence=True)
 
         with pytest.raises(
             RuntimeError,
             match="evidence failure",
         ):
-            await _persistence(
-                uow
-            ).persist(
+            await _persistence(uow).persist(
                 transaction_context=_transaction_context(),
                 audit_record=_audit(),
                 evidence_record=_evidence(),
@@ -318,20 +264,14 @@ def test_linkage_guard_rejects_mismatched_audit_before_uow() -> None:
 
         wrong_audit = replace(
             _audit(),
-            transaction_id=TransactionId(
-                UUID(
-                    "00000000-0000-7c00-8000-000000009999"
-                )
-            ),
+            transaction_id=TransactionId(UUID("00000000-0000-7c00-8000-000000009999")),
         )
 
         with pytest.raises(
             ValueError,
             match="audit transaction",
         ):
-            await _persistence(
-                uow
-            ).persist(
+            await _persistence(uow).persist(
                 transaction_context=_transaction_context(),
                 audit_record=wrong_audit,
                 evidence_record=_evidence(),
@@ -351,9 +291,7 @@ def test_evidence_must_reference_activation_audit() -> None:
             evidence,
             envelope=replace(
                 evidence.envelope,
-                audit_record_id=UUID(
-                    "00000000-0000-7c00-8000-000000009998"
-                ),
+                audit_record_id=UUID("00000000-0000-7c00-8000-000000009998"),
             ),
         )
 
@@ -361,9 +299,7 @@ def test_evidence_must_reference_activation_audit() -> None:
             ValueError,
             match="does not reference activation audit",
         ):
-            await _persistence(
-                uow
-            ).persist(
+            await _persistence(uow).persist(
                 transaction_context=_transaction_context(),
                 audit_record=_audit(),
                 evidence_record=broken,

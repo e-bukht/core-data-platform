@@ -49,9 +49,7 @@ def test_p0_i3_upgrades_exactly_to_evidence_schema(
     image: str,
 ) -> None:
     with PostgresContainer(image) as postgres:
-        migration_url, runtime_url = provision_roles(
-            admin_url(postgres)
-        )
+        migration_url, runtime_url = provision_roles(admin_url(postgres))
 
         # ------------------------------------------------------
         # 1. Establish the certified P0-I3 schema boundary.

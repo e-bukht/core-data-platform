@@ -141,7 +141,6 @@ def cert_execution_context(
     )
 
 
-
 @pytest.fixture
 def cert_identity_provider() -> CertificationIdentityProvider:
     return CertificationIdentityProvider.create()

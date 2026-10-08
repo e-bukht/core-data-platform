@@ -50,19 +50,11 @@ def _grant(
     *,
     tenant_id: TenantId | None = None,
     actor_id: ActorId | None = None,
-    capabilities: tuple[str, ...] = (
-        "platform.outbox.retry",
-    ),
+    capabilities: tuple[str, ...] = ("platform.outbox.retry",),
     scope: BreakGlassScope | None = None,
-    status: BreakGlassGrantStatus = (
-        BreakGlassGrantStatus.ACTIVE
-    ),
-    accepted_acr_values: frozenset[str] = frozenset(
-        {"urn:core-platform:acr:elevated"}
-    ),
-    required_amr: frozenset[str] = frozenset(
-        {"mfa"}
-    ),
+    status: BreakGlassGrantStatus = (BreakGlassGrantStatus.ACTIVE),
+    accepted_acr_values: frozenset[str] = frozenset({"urn:core-platform:acr:elevated"}),
+    required_amr: frozenset[str] = frozenset({"mfa"}),
 ) -> BreakGlassGrant:
     return BreakGlassGrant(
         grant_id=BreakGlassGrantId.new(),
@@ -70,10 +62,7 @@ def _grant(
         actor_id=actor_id or ActorId.new(),
         issued_by_actor_id=ActorId.new(),
         capabilities=capabilities,
-        scope=scope
-        or BreakGlassScope(
-            BreakGlassScopeKind.TENANT
-        ),
+        scope=scope or BreakGlassScope(BreakGlassScopeKind.TENANT),
         reason="Emergency operational recovery",
         valid_from=_NOW - timedelta(minutes=5),
         valid_until=_NOW + timedelta(minutes=25),
@@ -95,9 +84,7 @@ def _request(
         tenant_id=grant.tenant_id,
         actor_id=grant.actor_id,
         capability=capability,
-        authentication_context=(
-            authentication or _authentication()
-        ),
+        authentication_context=(authentication or _authentication()),
         resource_type=resource_type,
         resource_id=resource_id,
     )
@@ -113,9 +100,7 @@ def test_valid_explicit_break_glass_grant_allows() -> None:
     )
 
     assert decision.allowed
-    assert decision.reason_code == (
-        "explicit_break_glass_grant"
-    )
+    assert decision.reason_code == ("explicit_break_glass_grant")
     assert decision.elevation is not None
     assert decision.elevation.grant_id == grant.grant_id
     assert decision.elevation.valid_until == grant.valid_until
@@ -236,9 +221,7 @@ def test_missing_required_acr_denies() -> None:
     decision = evaluate_break_glass(
         _request(
             grant,
-            authentication=_authentication(
-                acr="urn:core-platform:acr:standard"
-            ),
+            authentication=_authentication(acr="urn:core-platform:acr:standard"),
         ),
         grant,
         now=_NOW,
@@ -254,9 +237,7 @@ def test_missing_required_amr_denies() -> None:
     decision = evaluate_break_glass(
         _request(
             grant,
-            authentication=_authentication(
-                amr=("pwd",)
-            ),
+            authentication=_authentication(amr=("pwd",)),
         ),
         grant,
         now=_NOW,
@@ -267,11 +248,7 @@ def test_missing_required_amr_denies() -> None:
 
 
 def test_all_required_amr_values_are_required() -> None:
-    grant = _grant(
-        required_amr=frozenset(
-            {"pwd", "mfa", "hardware-key"}
-        )
-    )
+    grant = _grant(required_amr=frozenset({"pwd", "mfa", "hardware-key"}))
 
     decision = evaluate_break_glass(
         _request(grant),

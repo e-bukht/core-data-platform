@@ -33,9 +33,7 @@ def _resolve(
 
 
 def test_secret_reference_normalizes_name() -> None:
-    reference = SecretReference(
-        "  evidence/signing/current  "
-    )
+    reference = SecretReference("  evidence/signing/current  ")
 
     assert reference.name == "evidence/signing/current"
 
@@ -72,9 +70,7 @@ def test_secret_value_requires_explicit_reveal() -> None:
 
 
 def test_secret_value_accepts_binary_material() -> None:
-    secret = SecretValue(
-        b"\x00\x01\x02\xff"
-    )
+    secret = SecretValue(b"\x00\x01\x02\xff")
 
     assert secret.reveal_bytes() == b"\x00\x01\x02\xff"
 
@@ -99,9 +95,7 @@ def test_secret_value_rejects_empty_material(
 def test_secret_provider_is_structural_port() -> None:
     secret = SecretValue("resolved-secret")
     provider = _FakeSecretProvider(secret)
-    reference = SecretReference(
-        "database/runtime-url"
-    )
+    reference = SecretReference("database/runtime-url")
 
     resolved = _resolve(
         provider,

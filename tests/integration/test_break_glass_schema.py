@@ -171,21 +171,15 @@ def _engines(
     image: str,
 ) -> Iterator[tuple[Engine, Engine]]:
     with PostgresContainer(image) as postgres:
-        migration_url, runtime_url = provision_roles(
-            admin_url(postgres)
-        )
+        migration_url, runtime_url = provision_roles(admin_url(postgres))
 
         run_alembic(
             migration_url,
             runtime_url,
         )
 
-        migration_engine = create_engine(
-            migration_url
-        )
-        runtime_engine = create_engine(
-            runtime_url
-        )
+        migration_engine = create_engine(migration_url)
+        runtime_engine = create_engine(runtime_url)
 
         try:
             yield migration_engine, runtime_engine
@@ -389,10 +383,7 @@ def test_break_glass_schema_is_tenant_safe_and_guarded(
                 ).scalars()
             )
 
-        assert {
-            str(value)
-            for value in visible
-        } == {GRANT_A}
+        assert {str(value) for value in visible} == {GRANT_A}
 
         with runtime_engine.begin() as connection:
             _set_tenant(
@@ -411,14 +402,9 @@ def test_break_glass_schema_is_tenant_safe_and_guarded(
                 ).scalars()
             )
 
-        assert {
-            str(value)
-            for value in visible
-        } == {GRANT_B}
+        assert {str(value) for value in visible} == {GRANT_B}
 
-        with pytest.raises(
-            DBAPIError
-        ), runtime_engine.begin() as connection:
+        with pytest.raises(DBAPIError), runtime_engine.begin() as connection:
             _set_tenant(
                 connection,
                 TENANT_A,
@@ -426,9 +412,7 @@ def test_break_glass_schema_is_tenant_safe_and_guarded(
 
             _insert_grant(
                 connection,
-                grant_id=(
-                    "00000000-0000-7600-8000-000000001041"
-                ),
+                grant_id=("00000000-0000-7600-8000-000000001041"),
                 tenant_id=TENANT_B,
                 actor_id=ACTOR_B,
                 issuer_id=ISSUER_B,
@@ -457,9 +441,7 @@ def test_break_glass_schema_is_tenant_safe_and_guarded(
 
             assert updated.rowcount == 1
 
-        with pytest.raises(
-            DBAPIError
-        ), runtime_engine.begin() as connection:
+        with pytest.raises(DBAPIError), runtime_engine.begin() as connection:
             _set_tenant(
                 connection,
                 TENANT_A,
@@ -480,9 +462,7 @@ def test_break_glass_schema_is_tenant_safe_and_guarded(
                 {"grant_id": GRANT_A},
             )
 
-        with pytest.raises(
-            DBAPIError
-        ), migration_engine.begin() as connection:
+        with pytest.raises(DBAPIError), migration_engine.begin() as connection:
             _set_tenant(
                 connection,
                 TENANT_A,
@@ -524,9 +504,7 @@ def test_break_glass_schema_is_tenant_safe_and_guarded(
                 {"grant_id": GRANT_A},
             )
 
-        with pytest.raises(
-            DBAPIError
-        ), runtime_engine.begin() as connection:
+        with pytest.raises(DBAPIError), runtime_engine.begin() as connection:
             _set_tenant(
                 connection,
                 TENANT_A,
@@ -645,9 +623,7 @@ def test_break_glass_schema_is_tenant_safe_and_guarded(
         )
 
         for statement in invalid_statements:
-            with pytest.raises(
-                IntegrityError
-            ), runtime_engine.begin() as connection:
+            with pytest.raises(IntegrityError), runtime_engine.begin() as connection:
                 _set_tenant(
                     connection,
                     TENANT_A,
@@ -662,9 +638,7 @@ def test_break_glass_schema_is_tenant_safe_and_guarded(
                     },
                 )
 
-        with pytest.raises(
-            DBAPIError
-        ), migration_engine.begin() as connection:
+        with pytest.raises(DBAPIError), migration_engine.begin() as connection:
             _set_tenant(
                 connection,
                 TENANT_A,

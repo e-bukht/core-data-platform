@@ -37,29 +37,13 @@ NOW = datetime(
     tzinfo=UTC,
 )
 
-TENANT_ID = TenantId(
-    UUID(
-        "00000000-0000-7f00-8000-000000001001"
-    )
-)
+TENANT_ID = TenantId(UUID("00000000-0000-7f00-8000-000000001001"))
 
-ADMIN_ID = ActorId(
-    UUID(
-        "00000000-0000-7f00-8000-000000001002"
-    )
-)
+ADMIN_ID = ActorId(UUID("00000000-0000-7f00-8000-000000001002"))
 
-SUBJECT_ID = ActorId(
-    UUID(
-        "00000000-0000-7f00-8000-000000001003"
-    )
-)
+SUBJECT_ID = ActorId(UUID("00000000-0000-7f00-8000-000000001003"))
 
-CORRELATION_ID = CorrelationId(
-    UUID(
-        "00000000-0000-7f00-8000-000000001004"
-    )
-)
+CORRELATION_ID = CorrelationId(UUID("00000000-0000-7f00-8000-000000001004"))
 
 
 class _Clock:
@@ -105,9 +89,7 @@ class _Persistence:
         **kwargs: object,
     ) -> int:
         del kwargs
-        raise AssertionError(
-            "Transition persistence is not expected"
-        )
+        raise AssertionError("Transition persistence is not expected")
 
 
 def _authentication() -> AuthenticationContext:
@@ -133,20 +115,10 @@ def _context(
 
     if elevated:
         elevation = BreakGlassElevationContext(
-            grant_id=BreakGlassGrantId(
-                UUID(
-                    "00000000-0000-7f00-8000-000000001005"
-                )
-            ),
-            issued_by_actor_id=ActorId(
-                UUID(
-                    "00000000-0000-7f00-8000-000000001006"
-                )
-            ),
+            grant_id=BreakGlassGrantId(UUID("00000000-0000-7f00-8000-000000001005")),
+            issued_by_actor_id=ActorId(UUID("00000000-0000-7f00-8000-000000001006")),
             capability=BREAK_GLASS_MANAGEMENT_CAPABILITY,
-            scope=BreakGlassScope(
-                BreakGlassScopeKind.TENANT
-            ),
+            scope=BreakGlassScope(BreakGlassScopeKind.TENANT),
             reason="Controlled emergency elevation",
             activated_at=NOW,
             valid_until=NOW + timedelta(minutes=10),
@@ -198,9 +170,7 @@ class _Authorizer:
 
 def _payload() -> dict[str, object]:
     return {
-        "actor_id": str(
-            SUBJECT_ID.value
-        ),
+        "actor_id": str(SUBJECT_ID.value),
         "capabilities": [
             "platform.outbox.retry",
         ],
@@ -209,9 +179,7 @@ def _payload() -> dict[str, object]:
         },
         "reason": "Controlled emergency recovery",
         "valid_from": NOW.isoformat(),
-        "valid_until": (
-            NOW + timedelta(minutes=30)
-        ).isoformat(),
+        "valid_until": (NOW + timedelta(minutes=30)).isoformat(),
         "accepted_acr_values": [
             "urn:core-platform:acr:loa2",
         ],
@@ -248,17 +216,13 @@ async def _exercise_issue(
     persistence = _Persistence()
 
     app.state.context_trust = authorizer
-    app.state.break_glass_lifecycle = (
-        BreakGlassLifecycleService(
-            persistence=persistence,
-            signer=signer,
-            clock=clock,
-        )
+    app.state.break_glass_lifecycle = BreakGlassLifecycleService(
+        persistence=persistence,
+        signer=signer,
+        clock=clock,
     )
 
-    transport = httpx.ASGITransport(
-        app=app
-    )
+    transport = httpx.ASGITransport(app=app)
 
     async with httpx.AsyncClient(
         transport=transport,
@@ -267,15 +231,9 @@ async def _exercise_issue(
         response = await client.post(
             "/platform/break-glass/grants",
             headers={
-                settings.tenant_header: str(
-                    TENANT_ID.value
-                ),
-                settings.correlation_header: str(
-                    CORRELATION_ID
-                ),
-                "Authorization": (
-                    "Bearer management-token"
-                ),
+                settings.tenant_header: str(TENANT_ID.value),
+                settings.correlation_header: str(CORRELATION_ID),
+                "Authorization": ("Bearer management-token"),
             },
             json=_payload(),
         )
@@ -307,30 +265,20 @@ def test_direct_management_authorization_reaches_real_lifecycle_service() -> Non
     body = response.json()
 
     assert body["version"] == 0
-    assert UUID(
-        body["grant_id"]
-    )
+    assert UUID(body["grant_id"])
 
     assert authorizer.calls == 1
     assert authorizer.token == "management-token"
-    assert authorizer.tenant_selector == str(
-        TENANT_ID.value
-    )
-    assert authorizer.capability_code == (
-        BREAK_GLASS_MANAGEMENT_CAPABILITY
-    )
-    assert authorizer.correlation_id == (
-        CORRELATION_ID
-    )
+    assert authorizer.tenant_selector == str(TENANT_ID.value)
+    assert authorizer.capability_code == (BREAK_GLASS_MANAGEMENT_CAPABILITY)
+    assert authorizer.correlation_id == (CORRELATION_ID)
 
     assert clock.calls == 1
     assert signer.calls == 1
     assert persistence.issue_calls == 1
     assert persistence.issue_kwargs is not None
 
-    grant = persistence.issue_kwargs[
-        "grant"
-    ]
+    grant = persistence.issue_kwargs["grant"]
 
     assert isinstance(
         grant,
@@ -340,11 +288,7 @@ def test_direct_management_authorization_reaches_real_lifecycle_service() -> Non
     assert grant.actor_id == SUBJECT_ID
     assert grant.issued_by_actor_id == ADMIN_ID
 
-    assert response.headers[
-        get_settings().correlation_header
-    ] == str(
-        CORRELATION_ID
-    )
+    assert response.headers[get_settings().correlation_header] == str(CORRELATION_ID)
 
 
 def test_break_glass_elevated_management_is_rejected_through_real_asgi_route() -> None:
@@ -364,18 +308,11 @@ def test_break_glass_elevated_management_is_rejected_through_real_asgi_route() -
 
     body = response.json()
 
-    assert body["code"] == (
-        "BREAK_GLASS.MANAGEMENT."
-        "REQUIRES.DIRECT.AUTHORIZATION"
-    )
-    assert body["correlation_id"] == str(
-        CORRELATION_ID
-    )
+    assert body["code"] == ("BREAK_GLASS.MANAGEMENT.REQUIRES.DIRECT.AUTHORIZATION")
+    assert body["correlation_id"] == str(CORRELATION_ID)
 
     assert authorizer.calls == 1
-    assert authorizer.capability_code == (
-        BREAK_GLASS_MANAGEMENT_CAPABILITY
-    )
+    assert authorizer.capability_code == (BREAK_GLASS_MANAGEMENT_CAPABILITY)
 
     assert clock.calls == 0
     assert signer.calls == 0

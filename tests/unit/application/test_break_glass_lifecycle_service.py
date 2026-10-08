@@ -52,21 +52,11 @@ NOW = datetime(
     tzinfo=UTC,
 )
 
-TENANT_ID = TenantId(
-    UUID("00000000-0000-7000-8000-000000000201")
-)
-ADMIN_ID = ActorId(
-    UUID("00000000-0000-7000-8000-000000000202")
-)
-SUBJECT_ID = ActorId(
-    UUID("00000000-0000-7000-8000-000000000203")
-)
-GRANT_ID = BreakGlassGrantId(
-    UUID("00000000-0000-7000-8000-000000000204")
-)
-CORRELATION_ID = CorrelationId(
-    UUID("00000000-0000-7000-8000-000000000205")
-)
+TENANT_ID = TenantId(UUID("00000000-0000-7000-8000-000000000201"))
+ADMIN_ID = ActorId(UUID("00000000-0000-7000-8000-000000000202"))
+SUBJECT_ID = ActorId(UUID("00000000-0000-7000-8000-000000000203"))
+GRANT_ID = BreakGlassGrantId(UUID("00000000-0000-7000-8000-000000000204"))
+CORRELATION_ID = CorrelationId(UUID("00000000-0000-7000-8000-000000000205"))
 
 
 class _Clock:
@@ -122,9 +112,7 @@ class _Persistence:
         self.calls = 0
         self.kwargs: _IssuePersistenceCall | None = None
         self.transition_calls = 0
-        self.transition_kwargs: (
-            _TransitionPersistenceCall | None
-        ) = None
+        self.transition_kwargs: _TransitionPersistenceCall | None = None
 
     async def persist_issue(
         self,
@@ -194,20 +182,10 @@ def _context(
 
     if elevated:
         elevation = BreakGlassElevationContext(
-            grant_id=BreakGlassGrantId(
-                UUID(
-                    "00000000-0000-7000-8000-000000000206"
-                )
-            ),
-            issued_by_actor_id=ActorId(
-                UUID(
-                    "00000000-0000-7000-8000-000000000207"
-                )
-            ),
+            grant_id=BreakGlassGrantId(UUID("00000000-0000-7000-8000-000000000206")),
+            issued_by_actor_id=ActorId(UUID("00000000-0000-7000-8000-000000000207")),
             capability=BREAK_GLASS_MANAGEMENT_CAPABILITY,
-            scope=BreakGlassScope(
-                BreakGlassScopeKind.TENANT
-            ),
+            scope=BreakGlassScope(BreakGlassScopeKind.TENANT),
             reason="Emergency recovery",
             activated_at=NOW,
             valid_until=NOW + timedelta(minutes=20),
@@ -241,14 +219,9 @@ def _grant() -> BreakGlassGrant:
         valid_from=NOW,
         valid_until=NOW + timedelta(minutes=30),
         status=BreakGlassGrantStatus.ACTIVE,
-        accepted_acr_values=frozenset(
-            {"urn:core-platform:acr:loa2"}
-        ),
-        required_amr=frozenset(
-            {"mfa"}
-        ),
+        accepted_acr_values=frozenset({"urn:core-platform:acr:loa2"}),
+        required_amr=frozenset({"mfa"}),
     )
-
 
 
 def _issue_command() -> BreakGlassIssueCommand:
@@ -261,11 +234,10 @@ def _issue_command() -> BreakGlassIssueCommand:
         reason=grant.reason,
         valid_from=grant.valid_from,
         valid_until=grant.valid_until,
-        accepted_acr_values=(
-            grant.accepted_acr_values
-        ),
+        accepted_acr_values=(grant.accepted_acr_values),
         required_amr=grant.required_amr,
     )
+
 
 def test_issue_builds_linked_audit_and_signed_evidence() -> None:
     async def scenario() -> None:
@@ -290,66 +262,33 @@ def test_issue_builds_linked_audit_and_signed_evidence() -> None:
         assert persistence.calls == 1
         assert persistence.kwargs is not None
 
-        transaction_context = persistence.kwargs[
-            "transaction_context"
-        ]
-        audit_record = persistence.kwargs[
-            "audit_record"
-        ]
-        evidence_record = persistence.kwargs[
-            "evidence_record"
-        ]
+        transaction_context = persistence.kwargs["transaction_context"]
+        audit_record = persistence.kwargs["audit_record"]
+        evidence_record = persistence.kwargs["evidence_record"]
 
-        assert (
-            transaction_context.operation
-            == BREAK_GLASS_ISSUE_OPERATION
-        )
-        assert (
-            transaction_context.capability
-            == BREAK_GLASS_MANAGEMENT_CAPABILITY
-        )
+        assert transaction_context.operation == BREAK_GLASS_ISSUE_OPERATION
+        assert transaction_context.capability == BREAK_GLASS_MANAGEMENT_CAPABILITY
         assert transaction_context.started_at == NOW
 
         assert audit_record.action == BREAK_GLASS_ISSUE_OPERATION
         assert audit_record.resource_type == "BreakGlassGrant"
-        assert audit_record.resource_id == str(
-            result.grant_id.value
-        )
+        assert audit_record.resource_id == str(result.grant_id.value)
         assert audit_record.occurred_at == NOW
 
-        persisted_grant = persistence.kwargs[
-            "grant"
-        ]
+        persisted_grant = persistence.kwargs["grant"]
 
         assert persisted_grant.grant_id == result.grant_id
         assert persisted_grant.tenant_id == TENANT_ID
         assert persisted_grant.issued_by_actor_id == ADMIN_ID
-        assert persisted_grant.status is (
-            BreakGlassGrantStatus.ACTIVE
-        )
+        assert persisted_grant.status is (BreakGlassGrantStatus.ACTIVE)
 
-        assert audit_record.details["event"] == (
-            "break-glass.issuance"
-        )
-        assert audit_record.details["actor_id"] == str(
-            SUBJECT_ID.value
-        )
-        assert audit_record.details[
-            "issued_by_actor_id"
-        ] == str(ADMIN_ID.value)
+        assert audit_record.details["event"] == ("break-glass.issuance")
+        assert audit_record.details["actor_id"] == str(SUBJECT_ID.value)
+        assert audit_record.details["issued_by_actor_id"] == str(ADMIN_ID.value)
 
-        assert (
-            evidence_record.envelope.evidence_type
-            == BREAK_GLASS_ISSUE_EVIDENCE_TYPE
-        )
-        assert (
-            evidence_record.envelope.audit_record_id
-            == audit_record.record_id.value
-        )
-        assert (
-            evidence_record.envelope.transaction_id
-            == transaction_context.transaction_id.value
-        )
+        assert evidence_record.envelope.evidence_type == BREAK_GLASS_ISSUE_EVIDENCE_TYPE
+        assert evidence_record.envelope.audit_record_id == audit_record.record_id.value
+        assert evidence_record.envelope.transaction_id == transaction_context.transaction_id.value
         assert evidence_record.envelope.signed_at == NOW
         assert evidence_record.payload_hash_matches()
 
@@ -423,6 +362,7 @@ def test_issue_rejects_naive_clock_before_signing() -> None:
 
     asyncio.run(scenario())
 
+
 # === C-I4-12t SUSPEND SERVICE ===
 
 
@@ -442,9 +382,7 @@ def test_suspend_builds_linked_audit_and_signed_evidence() -> None:
             context=_context(),
             grant_id=GRANT_ID,
             expected_version=7,
-            transition_reason=(
-                "  Incident contained; suspend access  "
-            ),
+            transition_reason=("  Incident contained; suspend access  "),
         )
 
         assert version == 8
@@ -454,79 +392,36 @@ def test_suspend_builds_linked_audit_and_signed_evidence() -> None:
         assert persistence.transition_calls == 1
         assert persistence.transition_kwargs is not None
 
-        transaction_context = persistence.transition_kwargs[
-            "transaction_context"
-        ]
-        audit_record = persistence.transition_kwargs[
-            "audit_record"
-        ]
-        evidence_record = persistence.transition_kwargs[
-            "evidence_record"
-        ]
+        transaction_context = persistence.transition_kwargs["transaction_context"]
+        audit_record = persistence.transition_kwargs["audit_record"]
+        evidence_record = persistence.transition_kwargs["evidence_record"]
 
-        assert (
-            transaction_context.operation
-            == BREAK_GLASS_SUSPEND_OPERATION
-        )
-        assert (
-            transaction_context.capability
-            == BREAK_GLASS_MANAGEMENT_CAPABILITY
-        )
+        assert transaction_context.operation == BREAK_GLASS_SUSPEND_OPERATION
+        assert transaction_context.capability == BREAK_GLASS_MANAGEMENT_CAPABILITY
         assert transaction_context.started_at == NOW
 
+        assert persistence.transition_kwargs["grant_id"] == GRANT_ID
+        assert persistence.transition_kwargs["expected_version"] == 7
         assert (
-            persistence.transition_kwargs["grant_id"]
-            == GRANT_ID
+            persistence.transition_kwargs["expected_current_status"] == BreakGlassGrantStatus.ACTIVE
         )
-        assert (
-            persistence.transition_kwargs["expected_version"]
-            == 7
-        )
-        assert (
-            persistence.transition_kwargs[
-                "expected_current_status"
-            ]
-            == BreakGlassGrantStatus.ACTIVE
-        )
-        assert (
-            persistence.transition_kwargs["target_status"]
-            == BreakGlassGrantStatus.SUSPENDED
-        )
-        assert (
-            persistence.transition_kwargs["changed_at"]
-            == NOW
-        )
+        assert persistence.transition_kwargs["target_status"] == BreakGlassGrantStatus.SUSPENDED
+        assert persistence.transition_kwargs["changed_at"] == NOW
 
-        assert (
-            audit_record.action
-            == BREAK_GLASS_SUSPEND_OPERATION
-        )
+        assert audit_record.action == BREAK_GLASS_SUSPEND_OPERATION
         assert audit_record.resource_type == "BreakGlassGrant"
         assert audit_record.resource_id == str(GRANT_ID.value)
         assert audit_record.occurred_at == NOW
 
-        assert audit_record.details["event"] == (
-            "break-glass.suspension"
-        )
+        assert audit_record.details["event"] == ("break-glass.suspension")
         assert audit_record.details["from_status"] == "ACTIVE"
         assert audit_record.details["to_status"] == "SUSPENDED"
         assert audit_record.details["expected_version"] == 7
-        assert audit_record.details["transition_reason"] == (
-            "Incident contained; suspend access"
-        )
+        assert audit_record.details["transition_reason"] == ("Incident contained; suspend access")
 
-        assert (
-            evidence_record.envelope.evidence_type
-            == BREAK_GLASS_SUSPEND_EVIDENCE_TYPE
-        )
-        assert (
-            evidence_record.envelope.audit_record_id
-            == audit_record.record_id.value
-        )
-        assert (
-            evidence_record.envelope.transaction_id
-            == transaction_context.transaction_id.value
-        )
+        assert evidence_record.envelope.evidence_type == BREAK_GLASS_SUSPEND_EVIDENCE_TYPE
+        assert evidence_record.envelope.audit_record_id == audit_record.record_id.value
+        assert evidence_record.envelope.transaction_id == transaction_context.transaction_id.value
         assert evidence_record.envelope.signed_at == NOW
         assert evidence_record.payload_hash_matches()
 
@@ -561,9 +456,7 @@ def test_suspend_rejects_invalid_intent_before_clock_or_signing(
             clock=clock,
         )
 
-        with pytest.raises(
-            ValidationError
-        ) as caught:
+        with pytest.raises(ValidationError) as caught:
             await service.suspend(
                 context=_context(),
                 grant_id=GRANT_ID,
@@ -571,12 +464,8 @@ def test_suspend_rejects_invalid_intent_before_clock_or_signing(
                 transition_reason=transition_reason,
             )
 
-        assert caught.value.code == (
-            "BREAK_GLASS.TRANSITION.INVALID"
-        )
-        assert caught.value.correlation_id == str(
-            CORRELATION_ID
-        )
+        assert caught.value.code == ("BREAK_GLASS.TRANSITION.INVALID")
+        assert caught.value.correlation_id == str(CORRELATION_ID)
         assert clock.calls == 0
         assert signer.calls == 0
         assert persistence.transition_calls == 0
@@ -608,14 +497,13 @@ def test_suspend_rejects_recursive_break_glass_before_clock() -> None:
                 transition_reason="Emergency suspension",
             )
 
-        assert exc.value.code == (
-            "BREAK_GLASS.MANAGEMENT.REQUIRES.DIRECT.AUTHORIZATION"
-        )
+        assert exc.value.code == ("BREAK_GLASS.MANAGEMENT.REQUIRES.DIRECT.AUTHORIZATION")
         assert clock.calls == 0
         assert signer.calls == 0
         assert persistence.transition_calls == 0
 
     asyncio.run(scenario())
+
 
 # === C-I4-12v RESUME SERVICE ===
 
@@ -636,9 +524,7 @@ def test_resume_builds_linked_audit_and_signed_evidence() -> None:
             context=_context(),
             grant_id=GRANT_ID,
             expected_version=8,
-            transition_reason=(
-                "  Recovery still active; restore access  "
-            ),
+            transition_reason=("  Recovery still active; restore access  "),
         )
 
         assert version == 8
@@ -648,60 +534,29 @@ def test_resume_builds_linked_audit_and_signed_evidence() -> None:
         assert persistence.transition_calls == 1
         assert persistence.transition_kwargs is not None
 
-        transaction_context = persistence.transition_kwargs[
-            "transaction_context"
-        ]
-        audit_record = persistence.transition_kwargs[
-            "audit_record"
-        ]
-        evidence_record = persistence.transition_kwargs[
-            "evidence_record"
-        ]
+        transaction_context = persistence.transition_kwargs["transaction_context"]
+        audit_record = persistence.transition_kwargs["audit_record"]
+        evidence_record = persistence.transition_kwargs["evidence_record"]
 
-        assert (
-            transaction_context.operation
-            == BREAK_GLASS_RESUME_OPERATION
-        )
-        assert (
-            transaction_context.capability
-            == BREAK_GLASS_MANAGEMENT_CAPABILITY
-        )
+        assert transaction_context.operation == BREAK_GLASS_RESUME_OPERATION
+        assert transaction_context.capability == BREAK_GLASS_MANAGEMENT_CAPABILITY
         assert transaction_context.started_at == NOW
 
+        assert persistence.transition_kwargs["grant_id"] == GRANT_ID
+        assert persistence.transition_kwargs["expected_version"] == 8
         assert (
-            persistence.transition_kwargs["grant_id"]
-            == GRANT_ID
-        )
-        assert (
-            persistence.transition_kwargs["expected_version"]
-            == 8
-        )
-        assert (
-            persistence.transition_kwargs[
-                "expected_current_status"
-            ]
+            persistence.transition_kwargs["expected_current_status"]
             == BreakGlassGrantStatus.SUSPENDED
         )
-        assert (
-            persistence.transition_kwargs["target_status"]
-            == BreakGlassGrantStatus.ACTIVE
-        )
-        assert (
-            persistence.transition_kwargs["changed_at"]
-            == NOW
-        )
+        assert persistence.transition_kwargs["target_status"] == BreakGlassGrantStatus.ACTIVE
+        assert persistence.transition_kwargs["changed_at"] == NOW
 
-        assert (
-            audit_record.action
-            == BREAK_GLASS_RESUME_OPERATION
-        )
+        assert audit_record.action == BREAK_GLASS_RESUME_OPERATION
         assert audit_record.resource_type == "BreakGlassGrant"
         assert audit_record.resource_id == str(GRANT_ID.value)
         assert audit_record.occurred_at == NOW
 
-        assert audit_record.details["event"] == (
-            "break-glass.resumption"
-        )
+        assert audit_record.details["event"] == ("break-glass.resumption")
         assert audit_record.details["from_status"] == "SUSPENDED"
         assert audit_record.details["to_status"] == "ACTIVE"
         assert audit_record.details["expected_version"] == 8
@@ -709,22 +564,14 @@ def test_resume_builds_linked_audit_and_signed_evidence() -> None:
             "Recovery still active; restore access"
         )
 
-        assert (
-            evidence_record.envelope.evidence_type
-            == BREAK_GLASS_RESUME_EVIDENCE_TYPE
-        )
-        assert (
-            evidence_record.envelope.audit_record_id
-            == audit_record.record_id.value
-        )
-        assert (
-            evidence_record.envelope.transaction_id
-            == transaction_context.transaction_id.value
-        )
+        assert evidence_record.envelope.evidence_type == BREAK_GLASS_RESUME_EVIDENCE_TYPE
+        assert evidence_record.envelope.audit_record_id == audit_record.record_id.value
+        assert evidence_record.envelope.transaction_id == transaction_context.transaction_id.value
         assert evidence_record.envelope.signed_at == NOW
         assert evidence_record.payload_hash_matches()
 
     asyncio.run(scenario())
+
 
 # === C-I4-12x REVOKE SERVICE ===
 
@@ -755,9 +602,7 @@ def test_revoke_builds_verified_source_audit_and_evidence(
             grant_id=GRANT_ID,
             expected_version=9,
             expected_current_status=source_status,
-            transition_reason=(
-                "  Emergency access no longer required  "
-            ),
+            transition_reason=("  Emergency access no longer required  "),
         )
 
         assert version == 8
@@ -767,82 +612,34 @@ def test_revoke_builds_verified_source_audit_and_evidence(
         assert persistence.transition_calls == 1
         assert persistence.transition_kwargs is not None
 
-        transaction_context = persistence.transition_kwargs[
-            "transaction_context"
-        ]
-        audit_record = persistence.transition_kwargs[
-            "audit_record"
-        ]
-        evidence_record = persistence.transition_kwargs[
-            "evidence_record"
-        ]
+        transaction_context = persistence.transition_kwargs["transaction_context"]
+        audit_record = persistence.transition_kwargs["audit_record"]
+        evidence_record = persistence.transition_kwargs["evidence_record"]
 
-        assert (
-            transaction_context.operation
-            == BREAK_GLASS_REVOKE_OPERATION
-        )
-        assert (
-            transaction_context.capability
-            == BREAK_GLASS_MANAGEMENT_CAPABILITY
-        )
+        assert transaction_context.operation == BREAK_GLASS_REVOKE_OPERATION
+        assert transaction_context.capability == BREAK_GLASS_MANAGEMENT_CAPABILITY
         assert transaction_context.started_at == NOW
 
-        assert (
-            persistence.transition_kwargs["grant_id"]
-            == GRANT_ID
-        )
-        assert (
-            persistence.transition_kwargs["expected_version"]
-            == 9
-        )
-        assert (
-            persistence.transition_kwargs[
-                "expected_current_status"
-            ]
-            == source_status
-        )
-        assert (
-            persistence.transition_kwargs["target_status"]
-            == BreakGlassGrantStatus.REVOKED
-        )
-        assert (
-            persistence.transition_kwargs["changed_at"]
-            == NOW
-        )
+        assert persistence.transition_kwargs["grant_id"] == GRANT_ID
+        assert persistence.transition_kwargs["expected_version"] == 9
+        assert persistence.transition_kwargs["expected_current_status"] == source_status
+        assert persistence.transition_kwargs["target_status"] == BreakGlassGrantStatus.REVOKED
+        assert persistence.transition_kwargs["changed_at"] == NOW
 
-        assert (
-            audit_record.action
-            == BREAK_GLASS_REVOKE_OPERATION
-        )
+        assert audit_record.action == BREAK_GLASS_REVOKE_OPERATION
         assert audit_record.resource_type == "BreakGlassGrant"
         assert audit_record.resource_id == str(GRANT_ID.value)
         assert audit_record.occurred_at == NOW
 
-        assert audit_record.details["event"] == (
-            "break-glass.revocation"
-        )
-        assert (
-            audit_record.details["from_status"]
-            == source_status.value
-        )
+        assert audit_record.details["event"] == ("break-glass.revocation")
+        assert audit_record.details["from_status"] == source_status.value
         assert audit_record.details["to_status"] == "REVOKED"
         assert audit_record.details["expected_version"] == 9
-        assert audit_record.details["transition_reason"] == (
-            "Emergency access no longer required"
-        )
+        assert audit_record.details["transition_reason"] == ("Emergency access no longer required")
 
-        assert (
-            evidence_record.envelope.evidence_type
-            == BREAK_GLASS_REVOKE_EVIDENCE_TYPE
-        )
-        assert (
-            evidence_record.envelope.audit_record_id
-            == audit_record.record_id.value
-        )
-        assert (
-            evidence_record.envelope.transaction_id
-            == transaction_context.transaction_id.value
-        )
+        assert evidence_record.envelope.evidence_type == BREAK_GLASS_REVOKE_EVIDENCE_TYPE
+        assert evidence_record.envelope.audit_record_id == audit_record.record_id.value
+        assert evidence_record.envelope.transaction_id == transaction_context.transaction_id.value
         assert evidence_record.envelope.signed_at == NOW
         assert evidence_record.payload_hash_matches()
 
@@ -861,25 +658,17 @@ def test_revoke_rejects_terminal_source_before_clock_or_signing() -> None:
             clock=clock,
         )
 
-        with pytest.raises(
-            ValidationError
-        ) as caught:
+        with pytest.raises(ValidationError) as caught:
             await service.revoke(
                 context=_context(),
                 grant_id=GRANT_ID,
                 expected_version=9,
-                expected_current_status=(
-                    BreakGlassGrantStatus.REVOKED
-                ),
+                expected_current_status=(BreakGlassGrantStatus.REVOKED),
                 transition_reason="Duplicate revocation",
             )
 
-        assert caught.value.code == (
-            "BREAK_GLASS.REVOKE.INVALID_SOURCE_STATUS"
-        )
-        assert caught.value.correlation_id == str(
-            CORRELATION_ID
-        )
+        assert caught.value.code == ("BREAK_GLASS.REVOKE.INVALID_SOURCE_STATUS")
+        assert caught.value.correlation_id == str(CORRELATION_ID)
         assert clock.calls == 0
         assert signer.calls == 0
         assert persistence.transition_calls == 0

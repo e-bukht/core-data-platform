@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 from dataclasses import dataclass
 
@@ -52,9 +52,7 @@ def build_break_glass_runtime(
     key_id = settings.evidence_signing_key_id
 
     if key_id is None:
-        raise RuntimeError(
-            "Evidence signing key ID is not configured"
-        )
+        raise RuntimeError("Evidence signing key ID is not configured")
 
     private_key = load_ed25519_private_key(
         secret_provider,
@@ -72,17 +70,13 @@ def build_break_glass_runtime(
     )
 
     activation_recorder = DurableBreakGlassActivationRecorder(
-        persistence=PostgresBreakGlassActivationPersistence(
-            factory
-        ),
+        persistence=PostgresBreakGlassActivationPersistence(factory),
         signer=signer,
         clock=UtcClock(),
     )
 
     lifecycle_service = BreakGlassLifecycleService(
-        persistence=PostgresBreakGlassLifecyclePersistence(
-            factory
-        ),
+        persistence=PostgresBreakGlassLifecyclePersistence(factory),
         signer=signer,
         clock=UtcClock(),
     )

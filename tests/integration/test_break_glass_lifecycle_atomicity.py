@@ -77,21 +77,11 @@ NOW = datetime(
     tzinfo=UTC,
 )
 
-TENANT_ID = TenantId(
-    UUID("00000000-0000-7e00-8000-000000001001")
-)
-ADMIN_ID = ActorId(
-    UUID("00000000-0000-7e00-8000-000000001002")
-)
-SUBJECT_ID = ActorId(
-    UUID("00000000-0000-7e00-8000-000000001003")
-)
-GRANT_ID = BreakGlassGrantId(
-    UUID("00000000-0000-7e00-8000-000000001004")
-)
-CORRELATION_ID = CorrelationId(
-    UUID("00000000-0000-7e00-8000-000000001005")
-)
+TENANT_ID = TenantId(UUID("00000000-0000-7e00-8000-000000001001"))
+ADMIN_ID = ActorId(UUID("00000000-0000-7e00-8000-000000001002"))
+SUBJECT_ID = ActorId(UUID("00000000-0000-7e00-8000-000000001003"))
+GRANT_ID = BreakGlassGrantId(UUID("00000000-0000-7e00-8000-000000001004"))
+CORRELATION_ID = CorrelationId(UUID("00000000-0000-7e00-8000-000000001005"))
 
 
 class _SequenceClock:
@@ -106,26 +96,20 @@ class _SequenceClock:
 
 
 def _selector_loop_factory() -> asyncio.AbstractEventLoop:
-    return asyncio.SelectorEventLoop(
-        selectors.SelectSelector()
-    )
+    return asyncio.SelectorEventLoop(selectors.SelectSelector())
 
 
 def _run(
     coro: Coroutine[Any, Any, None],
 ) -> None:
-    with asyncio.Runner(
-        loop_factory=_selector_loop_factory
-    ) as runner:
+    with asyncio.Runner(loop_factory=_selector_loop_factory) as runner:
         runner.run(coro)
 
 
 def _seed(
     migration_url: str,
 ) -> None:
-    engine = create_engine(
-        migration_url
-    )
+    engine = create_engine(migration_url)
 
     try:
         with engine.begin() as connection:
@@ -146,11 +130,7 @@ def _seed(
                     )
                     """
                 ),
-                {
-                    "tenant_id": str(
-                        TENANT_ID.value
-                    )
-                },
+                {"tenant_id": str(TENANT_ID.value)},
             )
 
             connection.execute(
@@ -178,12 +158,8 @@ def _seed(
                     """
                 ),
                 {
-                    "admin_id": str(
-                        ADMIN_ID.value
-                    ),
-                    "subject_id": str(
-                        SUBJECT_ID.value
-                    ),
+                    "admin_id": str(ADMIN_ID.value),
+                    "subject_id": str(SUBJECT_ID.value),
                 },
             )
     finally:
@@ -226,9 +202,7 @@ def _grant() -> BreakGlassGrant:
             "platform.outbox.retry",
             "platform.audit.read",
         ),
-        scope=BreakGlassScope(
-            BreakGlassScopeKind.TENANT
-        ),
+        scope=BreakGlassScope(BreakGlassScopeKind.TENANT),
         reason="Controlled emergency recovery",
         valid_from=NOW,
         valid_until=NOW + timedelta(minutes=30),
@@ -256,9 +230,7 @@ def _issue_command() -> BreakGlassIssueCommand:
         reason=grant.reason,
         valid_from=grant.valid_from,
         valid_until=grant.valid_until,
-        accepted_acr_values=(
-            grant.accepted_acr_values
-        ),
+        accepted_acr_values=(grant.accepted_acr_values),
         required_amr=grant.required_amr,
     )
 
@@ -282,17 +254,9 @@ async def _exercise(
         ]
     )
 
-    database = Database(
-        runtime_url
-    )
+    database = Database(runtime_url)
 
-    persistence = (
-        PostgresBreakGlassLifecyclePersistence(
-            PostgresUnitOfWorkFactory(
-                database
-            )
-        )
-    )
+    persistence = PostgresBreakGlassLifecyclePersistence(PostgresUnitOfWorkFactory(database))
 
     service = BreakGlassLifecycleService(
         persistence=persistence,
@@ -315,9 +279,7 @@ async def _exercise(
         context=context,
         grant_id=grant_id,
         expected_version=issue_result.version,
-        transition_reason=(
-            "Temporarily suspend emergency access"
-        ),
+        transition_reason=("Temporarily suspend emergency access"),
     )
 
     assert suspend_version == 1
@@ -326,9 +288,7 @@ async def _exercise(
         context=context,
         grant_id=grant_id,
         expected_version=suspend_version,
-        transition_reason=(
-            "Emergency recovery requires restored access"
-        ),
+        transition_reason=("Emergency recovery requires restored access"),
     )
 
     assert resume_version == 2
@@ -337,19 +297,13 @@ async def _exercise(
         context=context,
         grant_id=grant_id,
         expected_version=resume_version,
-        expected_current_status=(
-            BreakGlassGrantStatus.ACTIVE
-        ),
-        transition_reason=(
-            "Emergency recovery completed"
-        ),
+        expected_current_status=(BreakGlassGrantStatus.ACTIVE),
+        transition_reason=("Emergency recovery completed"),
     )
 
     assert revoke_version == 3
 
-    async with database.tenant_transaction(
-        TENANT_ID.value
-    ) as connection:
+    async with database.tenant_transaction(TENANT_ID.value) as connection:
         grant_row = (
             (
                 await connection.execute(
@@ -366,12 +320,8 @@ async def _exercise(
                         """
                     ),
                     {
-                        "tenant_id": str(
-                            TENANT_ID.value
-                        ),
-                        "grant_id": str(
-                            grant_id.value
-                        ),
+                        "tenant_id": str(TENANT_ID.value),
+                        "grant_id": str(grant_id.value),
                     },
                 )
             )
@@ -424,12 +374,8 @@ async def _exercise(
                         """
                     ),
                     {
-                        "tenant_id": str(
-                            TENANT_ID.value
-                        ),
-                        "grant_id": str(
-                            grant_id.value
-                        ),
+                        "tenant_id": str(TENANT_ID.value),
+                        "grant_id": str(grant_id.value),
                     },
                 )
             )
@@ -440,30 +386,21 @@ async def _exercise(
     assert grant_row["status"] == "REVOKED"
     assert grant_row["version"] == 3
 
-    assert [
-        row["action"]
-        for row in lifecycle_rows
-    ] == [
+    assert [row["action"] for row in lifecycle_rows] == [
         BREAK_GLASS_ISSUE_OPERATION,
         BREAK_GLASS_SUSPEND_OPERATION,
         BREAK_GLASS_RESUME_OPERATION,
         BREAK_GLASS_REVOKE_OPERATION,
     ]
 
-    assert [
-        row["evidence_type"]
-        for row in lifecycle_rows
-    ] == [
+    assert [row["evidence_type"] for row in lifecycle_rows] == [
         BREAK_GLASS_ISSUE_EVIDENCE_TYPE,
         BREAK_GLASS_SUSPEND_EVIDENCE_TYPE,
         BREAK_GLASS_RESUME_EVIDENCE_TYPE,
         BREAK_GLASS_REVOKE_EVIDENCE_TYPE,
     ]
 
-    assert [
-        row["details"]["event"]
-        for row in lifecycle_rows
-    ] == [
+    assert [row["details"]["event"] for row in lifecycle_rows] == [
         "break-glass.issuance",
         "break-glass.suspension",
         "break-glass.resumption",
@@ -471,27 +408,12 @@ async def _exercise(
     ]
 
     for row in lifecycle_rows:
-        assert (
-            row["audit_transaction_id"]
-            == row["evidence_transaction_id"]
-        )
-        assert (
-            row["audit_actor_id"]
-            == row["evidence_actor_id"]
-            == ADMIN_ID.value
-        )
-        assert (
-            row["audit_correlation_id"]
-            == row["evidence_correlation_id"]
-            == CORRELATION_ID.value
-        )
+        assert row["audit_transaction_id"] == row["evidence_transaction_id"]
+        assert row["audit_actor_id"] == row["evidence_actor_id"] == ADMIN_ID.value
+        assert row["audit_correlation_id"] == row["evidence_correlation_id"] == CORRELATION_ID.value
         assert row["signature_algorithm"] == "Ed25519"
-        assert row["key_id"] == (
-            "break-glass-lifecycle-test-key"
-        )
-        assert row["payload_hash"].startswith(
-            "sha256:"
-        )
+        assert row["key_id"] == ("break-glass-lifecycle-test-key")
+        assert row["payload_hash"].startswith("sha256:")
         assert row["signature_length"] == 64
 
 
@@ -506,29 +428,18 @@ async def _exercise(
 def test_break_glass_lifecycle_happy_path(
     image: str,
 ) -> None:
-    with PostgresContainer(
-        image
-    ) as postgres:
-        migration_url, runtime_url = (
-            provision_roles(
-                admin_url(postgres)
-            )
-        )
+    with PostgresContainer(image) as postgres:
+        migration_url, runtime_url = provision_roles(admin_url(postgres))
 
         run_alembic(
             migration_url,
             runtime_url,
         )
 
-        _seed(
-            migration_url
-        )
+        _seed(migration_url)
 
-        _run(
-            _exercise(
-                runtime_url
-            )
-        )
+        _run(_exercise(runtime_url))
+
 
 # === C-I4-12z3 REAL TRANSITION ROLLBACK ===
 
@@ -543,17 +454,9 @@ async def _exercise_transition_rollback(
         key_id="break-glass-lifecycle-rollback-key",
     )
 
-    database = Database(
-        runtime_url
-    )
+    database = Database(runtime_url)
 
-    persistence = (
-        PostgresBreakGlassLifecyclePersistence(
-            PostgresUnitOfWorkFactory(
-                database
-            )
-        )
-    )
+    persistence = PostgresBreakGlassLifecyclePersistence(PostgresUnitOfWorkFactory(database))
 
     # First establish a real durable ACTIVE grant at version 0.
     issue_service = BreakGlassLifecycleService(
@@ -598,9 +501,7 @@ async def _exercise_transition_rollback(
         "from_status": "ACTIVE",
         "to_status": "SUSPENDED",
         "expected_version": 0,
-        "transition_reason": (
-            "Forced rollback integration proof"
-        ),
+        "transition_reason": ("Forced rollback integration proof"),
         "changed_at": changed_at.isoformat(),
     }
 
@@ -641,43 +542,37 @@ async def _exercise_transition_rollback(
         ),
     )
 
+    from typing import cast
+
+    from core_platform.foundation.canonical_json import JsonValue
+
     evidence_record = await evidence_factory.create(
         context=wrong_actor_context,
         audit_record_id=audit_record_id.value,
         transaction_id=transaction_id.value,
-        evidence_type=(
-            BREAK_GLASS_SUSPEND_EVIDENCE_TYPE
-        ),
+        evidence_type=(BREAK_GLASS_SUSPEND_EVIDENCE_TYPE),
         occurred_at=changed_at,
-        payload=payload,
+        payload=cast(dict[str, JsonValue], payload),
         signed_at=changed_at,
     )
 
     with pytest.raises(
         ValueError,
-        match=(
-            "Evidence actor does not match UnitOfWork"
-        ),
+        match=("Evidence actor does not match UnitOfWork"),
     ):
         await persistence.persist_transition(
             transaction_context=transaction_context,
             grant_id=grant_id,
             expected_version=0,
-            expected_current_status=(
-                BreakGlassGrantStatus.ACTIVE
-            ),
-            target_status=(
-                BreakGlassGrantStatus.SUSPENDED
-            ),
+            expected_current_status=(BreakGlassGrantStatus.ACTIVE),
+            target_status=(BreakGlassGrantStatus.SUSPENDED),
             changed_at=changed_at,
             audit_record=audit_record,
             evidence_record=evidence_record,
         )
 
     # PostgreSQL must have rolled back BOTH the CAS and Audit append.
-    async with database.tenant_transaction(
-        TENANT_ID.value
-    ) as connection:
+    async with database.tenant_transaction(TENANT_ID.value) as connection:
         grant_row = (
             (
                 await connection.execute(
@@ -694,12 +589,8 @@ async def _exercise_transition_rollback(
                         """
                     ),
                     {
-                        "tenant_id": str(
-                            TENANT_ID.value
-                        ),
-                        "grant_id": str(
-                            grant_id.value
-                        ),
+                        "tenant_id": str(TENANT_ID.value),
+                        "grant_id": str(grant_id.value),
                     },
                 )
             )
@@ -722,15 +613,9 @@ async def _exercise_transition_rollback(
                     """
                 ),
                 {
-                    "tenant_id": str(
-                        TENANT_ID.value
-                    ),
-                    "grant_id": str(
-                        grant_id.value
-                    ),
-                    "action": (
-                        BREAK_GLASS_SUSPEND_OPERATION
-                    ),
+                    "tenant_id": str(TENANT_ID.value),
+                    "grant_id": str(grant_id.value),
+                    "action": (BREAK_GLASS_SUSPEND_OPERATION),
                 },
             )
         ).scalar_one()
@@ -748,12 +633,8 @@ async def _exercise_transition_rollback(
                     """
                 ),
                 {
-                    "tenant_id": str(
-                        TENANT_ID.value
-                    ),
-                    "evidence_type": (
-                        BREAK_GLASS_SUSPEND_EVIDENCE_TYPE
-                    ),
+                    "tenant_id": str(TENANT_ID.value),
+                    "evidence_type": (BREAK_GLASS_SUSPEND_EVIDENCE_TYPE),
                 },
             )
         ).scalar_one()
@@ -766,26 +647,14 @@ async def _exercise_transition_rollback(
 
 @pytest.mark.integration
 def test_break_glass_transition_rolls_back_on_evidence_failure() -> None:
-    with PostgresContainer(
-        "postgres:18"
-    ) as postgres:
-        migration_url, runtime_url = (
-            provision_roles(
-                admin_url(postgres)
-            )
-        )
+    with PostgresContainer("postgres:18") as postgres:
+        migration_url, runtime_url = provision_roles(admin_url(postgres))
 
         run_alembic(
             migration_url,
             runtime_url,
         )
 
-        _seed(
-            migration_url
-        )
+        _seed(migration_url)
 
-        _run(
-            _exercise_transition_rollback(
-                runtime_url
-            )
-        )
+        _run(_exercise_transition_rollback(runtime_url))

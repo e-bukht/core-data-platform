@@ -15,20 +15,16 @@ def _resolve(
     provider: SecretProvider,
     name: str,
 ) -> str:
-    return provider.get_secret(
-        SecretReference(name)
-    ).reveal_text()
+    return provider.get_secret(SecretReference(name)).reveal_text()
 
 
 def test_environment_provider_resolves_bound_secret() -> None:
     provider = EnvironmentSecretProvider(
         bindings={
-            "database/runtime-url":
-                "CORE_PLATFORM_DATABASE_URL",
+            "database/runtime-url": "CORE_PLATFORM_DATABASE_URL",
         },
         environ={
-            "CORE_PLATFORM_DATABASE_URL":
-                "postgresql+psycopg://secret-value",
+            "CORE_PLATFORM_DATABASE_URL": "postgresql+psycopg://secret-value",
         },
     )
 
@@ -51,12 +47,7 @@ def test_environment_provider_is_structural_secret_provider() -> None:
         },
     )
 
-    assert (
-        provider.get_secret(
-            SecretReference("test/secret")
-        ).reveal_text()
-        == "value"
-    )
+    assert provider.get_secret(SecretReference("test/secret")).reveal_text() == "value"
 
 
 def test_environment_provider_rejects_unknown_reference() -> None:
@@ -73,9 +64,7 @@ def test_environment_provider_rejects_unknown_reference() -> None:
         RuntimeError,
         match="Secret reference is not configured: unknown/secret",
     ) as exc_info:
-        provider.get_secret(
-            SecretReference("unknown/secret")
-        )
+        provider.get_secret(SecretReference("unknown/secret"))
 
     assert "classified" not in str(exc_info.value)
 
@@ -83,8 +72,7 @@ def test_environment_provider_rejects_unknown_reference() -> None:
 def test_environment_provider_rejects_missing_secret_without_leak() -> None:
     provider = EnvironmentSecretProvider(
         bindings={
-            "evidence/private-key":
-                "CORE_PLATFORM_EVIDENCE_PRIVATE_KEY",
+            "evidence/private-key": "CORE_PLATFORM_EVIDENCE_PRIVATE_KEY",
         },
         environ={},
     )
@@ -93,14 +81,9 @@ def test_environment_provider_rejects_missing_secret_without_leak() -> None:
         RuntimeError,
         match="Secret is unavailable: evidence/private-key",
     ) as exc_info:
-        provider.get_secret(
-            SecretReference("evidence/private-key")
-        )
+        provider.get_secret(SecretReference("evidence/private-key"))
 
-    assert (
-        "CORE_PLATFORM_EVIDENCE_PRIVATE_KEY"
-        not in str(exc_info.value)
-    )
+    assert "CORE_PLATFORM_EVIDENCE_PRIVATE_KEY" not in str(exc_info.value)
 
 
 @pytest.mark.parametrize(
@@ -115,9 +98,7 @@ def test_environment_provider_rejects_blank_reference_binding(
 ) -> None:
     with pytest.raises(
         ValueError,
-        match=(
-            "Secret binding reference name must not be empty"
-        ),
+        match=("Secret binding reference name must not be empty"),
     ):
         EnvironmentSecretProvider(
             bindings=bindings,
@@ -137,9 +118,7 @@ def test_environment_provider_rejects_blank_environment_binding(
 ) -> None:
     with pytest.raises(
         ValueError,
-        match=(
-            "Secret binding environment name must not be empty"
-        ),
+        match=("Secret binding environment name must not be empty"),
     ):
         EnvironmentSecretProvider(
             bindings=bindings,
@@ -161,6 +140,4 @@ def test_environment_provider_rejects_empty_secret_value() -> None:
         RuntimeError,
         match="Secret is unavailable: test/secret",
     ):
-        provider.get_secret(
-            SecretReference("test/secret")
-        )
+        provider.get_secret(SecretReference("test/secret"))

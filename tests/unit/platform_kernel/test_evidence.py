@@ -28,24 +28,12 @@ def _envelope(
 
     return EvidenceEnvelope(
         envelope_version=1,
-        record_id=EvidenceRecordId(
-            UUID("10000000-0000-7000-8000-000000000001")
-        ),
-        tenant_id=TenantId(
-            UUID("20000000-0000-7000-8000-000000000001")
-        ),
-        audit_record_id=UUID(
-            "30000000-0000-7000-8000-000000000001"
-        ),
-        transaction_id=UUID(
-            "40000000-0000-7000-8000-000000000001"
-        ),
-        actor_id=ActorId(
-            UUID("50000000-0000-7000-8000-000000000001")
-        ),
-        correlation_id=CorrelationId(
-            UUID("60000000-0000-7000-8000-000000000001")
-        ),
+        record_id=EvidenceRecordId(UUID("10000000-0000-7000-8000-000000000001")),
+        tenant_id=TenantId(UUID("20000000-0000-7000-8000-000000000001")),
+        audit_record_id=UUID("30000000-0000-7000-8000-000000000001"),
+        transaction_id=UUID("40000000-0000-7000-8000-000000000001"),
+        actor_id=ActorId(UUID("50000000-0000-7000-8000-000000000001")),
+        correlation_id=CorrelationId(UUID("60000000-0000-7000-8000-000000000001")),
         evidence_type="transaction.audit",
         occurred_at=occurred_at,
         signed_at=occurred_at,
@@ -57,9 +45,7 @@ def _envelope(
 
 def test_evidence_signing_envelope_is_deterministic() -> None:
     payload = {"action": "test-resource.create", "outcome": "SUCCESS"}
-    envelope = _envelope(
-        payload_hash=canonical_json_sha256(payload)
-    )
+    envelope = _envelope(payload_hash=canonical_json_sha256(payload))
 
     assert envelope.signing_bytes() == envelope.signing_bytes()
     assert b'"signature_algorithm":"Ed25519"' in envelope.signing_bytes()
@@ -78,9 +64,7 @@ def test_evidence_detects_payload_tampering() -> None:
     original = {"amount": 100}
     tampered = {"amount": 101}
 
-    envelope = _envelope(
-        payload_hash=canonical_json_sha256(original)
-    )
+    envelope = _envelope(payload_hash=canonical_json_sha256(original))
 
     original_record = EvidenceRecord(
         envelope=envelope,
@@ -98,9 +82,7 @@ def test_evidence_detects_payload_tampering() -> None:
 
 
 def test_evidence_rejects_naive_timestamps() -> None:
-    envelope = _envelope(
-        payload_hash=canonical_json_sha256({"result": "ok"})
-    )
+    envelope = _envelope(payload_hash=canonical_json_sha256({"result": "ok"}))
 
     with pytest.raises(
         ValueError,

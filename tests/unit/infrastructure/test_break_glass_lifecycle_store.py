@@ -42,12 +42,8 @@ from core_platform.transaction_kernel.models import (
     TransactionContext,
 )
 
-TENANT_ID = TenantId(
-    UUID("00000000-0000-7000-8000-000000000001")
-)
-ACTOR_ID = ActorId(
-    UUID("00000000-0000-7000-8000-000000000002")
-)
+TENANT_ID = TenantId(UUID("00000000-0000-7000-8000-000000000001"))
+ACTOR_ID = ActorId(UUID("00000000-0000-7000-8000-000000000002"))
 
 
 def _async_test(
@@ -63,9 +59,7 @@ def _async_test(
     return wrapper
 
 
-GRANT_ID = BreakGlassGrantId(
-    UUID("00000000-0000-7000-8000-000000000003")
-)
+GRANT_ID = BreakGlassGrantId(UUID("00000000-0000-7000-8000-000000000003"))
 
 
 def _connection_provider(
@@ -79,14 +73,10 @@ def _connection_provider(
 
 def _context() -> TransactionContext:
     return TransactionContext(
-        transaction_id=TransactionId(
-            UUID("00000000-0000-7000-8000-000000000004")
-        ),
+        transaction_id=TransactionId(UUID("00000000-0000-7000-8000-000000000004")),
         tenant_id=TENANT_ID,
         actor_id=ACTOR_ID,
-        correlation_id=CorrelationId(
-            UUID("00000000-0000-7000-8000-000000000005")
-        ),
+        correlation_id=CorrelationId(UUID("00000000-0000-7000-8000-000000000005")),
         operation="security.break-glass.suspend",
         capability="platform.break-glass.manage",
         started_at=datetime(
@@ -284,9 +274,7 @@ async def test_illegal_transition_never_calls_cas(
 
     async def forbidden_cas(*args: object, **kwargs: object) -> int:
         del args, kwargs
-        raise AssertionError(
-            "CAS must not run for illegal transition"
-        )
+        raise AssertionError("CAS must not run for illegal transition")
 
     monkeypatch.setattr(
         module,
@@ -342,11 +330,10 @@ async def test_naive_changed_at_is_rejected() -> None:
 
     assert connection.executions == 0
 
+
 # === C-I4-12k2 ISSUE STORE PROOFS ===
 
-GRANT_ACTOR_ID = ActorId(
-    UUID("00000000-0000-7000-8000-000000000006")
-)
+GRANT_ACTOR_ID = ActorId(UUID("00000000-0000-7000-8000-000000000006"))
 
 
 def _issue_grant(
@@ -486,16 +473,11 @@ def test_issue_rejects_cross_tenant_grant_before_sql() -> None:
             _context(),
         )
 
-        foreign_tenant = TenantId(
-            UUID("00000000-0000-7000-8000-000000000007")
-        )
+        foreign_tenant = TenantId(UUID("00000000-0000-7000-8000-000000000007"))
 
         with pytest.raises(
             ValueError,
-            match=(
-                "Break-glass grant tenant "
-                "does not match UnitOfWork"
-            ),
+            match=("Break-glass grant tenant does not match UnitOfWork"),
         ):
             await store.issue(
                 grant=_issue_grant(
@@ -525,16 +507,11 @@ def test_issue_rejects_foreign_issuer_before_sql() -> None:
             _context(),
         )
 
-        foreign_issuer = ActorId(
-            UUID("00000000-0000-7000-8000-000000000008")
-        )
+        foreign_issuer = ActorId(UUID("00000000-0000-7000-8000-000000000008"))
 
         with pytest.raises(
             ValueError,
-            match=(
-                "Break-glass grant issuer "
-                "does not match UnitOfWork actor"
-            ),
+            match=("Break-glass grant issuer does not match UnitOfWork actor"),
         ):
             await store.issue(
                 grant=_issue_grant(
@@ -594,6 +571,7 @@ def test_issue_rejects_non_active_initial_status_before_sql(
         assert connection.executions == 0
 
     asyncio.run(scenario())
+
 
 # === C-I4-12u RESUME TEMPORAL SAFETY ===
 
@@ -658,9 +636,7 @@ def test_resume_rejects_outside_validity_window(
             **kwargs: object,
         ) -> int:
             del args, kwargs
-            raise AssertionError(
-                "CAS must not run outside validity window"
-            )
+            raise AssertionError("CAS must not run outside validity window")
 
         monkeypatch.setattr(
             module,
@@ -673,9 +649,7 @@ def test_resume_rejects_outside_validity_window(
             _context(),
         )
 
-        with pytest.raises(
-            BusinessRuleViolation
-        ) as caught:
+        with pytest.raises(BusinessRuleViolation) as caught:
             await store.transition_status(
                 grant_id=GRANT_ID,
                 expected_version=7,
@@ -684,12 +658,8 @@ def test_resume_rejects_outside_validity_window(
                 changed_at=changed_at,
             )
 
-        assert caught.value.code == (
-            "BREAK_GLASS.RESUME.OUTSIDE_VALIDITY_WINDOW"
-        )
-        assert caught.value.correlation_id == str(
-            _context().correlation_id
-        )
+        assert caught.value.code == ("BREAK_GLASS.RESUME.OUTSIDE_VALIDITY_WINDOW")
+        assert caught.value.correlation_id == str(_context().correlation_id)
 
     asyncio.run(scenario())
 
@@ -760,6 +730,7 @@ def test_resume_inside_validity_window_uses_cas(
 
     asyncio.run(scenario())
 
+
 # === C-I4-12w EXPECTED SOURCE STATUS ===
 
 
@@ -776,9 +747,7 @@ def test_source_status_mismatch_is_concurrency_conflict(
             **kwargs: object,
         ) -> int:
             del args, kwargs
-            raise AssertionError(
-                "CAS must not run after source-status mismatch"
-            )
+            raise AssertionError("CAS must not run after source-status mismatch")
 
         monkeypatch.setattr(
             module,
@@ -798,9 +767,7 @@ def test_source_status_mismatch_is_concurrency_conflict(
             await store.transition_status(
                 grant_id=GRANT_ID,
                 expected_version=7,
-                expected_current_status=(
-                    BreakGlassGrantStatus.ACTIVE
-                ),
+                expected_current_status=(BreakGlassGrantStatus.ACTIVE),
                 target_status=BreakGlassGrantStatus.REVOKED,
                 changed_at=datetime(
                     2026,

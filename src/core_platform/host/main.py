@@ -46,9 +46,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     observability: ObservabilityRuntime = app.state.observability
     secret_provider: SecretProvider = app.state.secret_provider
 
-    database_url = secret_provider.get_secret(
-        RUNTIME_DATABASE_URL_SECRET
-    ).reveal_text()
+    database_url = secret_provider.get_secret(RUNTIME_DATABASE_URL_SECRET).reveal_text()
 
     database = Database(database_url)
     authenticator: OidcTokenAuthenticator | None = None
@@ -73,18 +71,14 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         repository = SqlContextTrustRepository(database)
         break_glass_repository = SqlBreakGlassRepository(database)
         app.state.database = database
-        app.state.break_glass_lifecycle = (
-            break_glass_runtime.lifecycle_service
-        )
+        app.state.break_glass_lifecycle = break_glass_runtime.lifecycle_service
         app.state.context_trust = ContextTrustService(
             authenticator=authenticator,
             repository=repository,
             break_glass_repository=break_glass_repository,
             pdp=CapabilityGrantPdp(),
             environment=settings.environment,
-            break_glass_activation_recorder=(
-                break_glass_runtime.activation_recorder
-            ),
+            break_glass_activation_recorder=(break_glass_runtime.activation_recorder),
         )
         app.state.startup_complete = True
         yield
@@ -139,9 +133,7 @@ def create_app(
     app.state.settings = active_settings
     app.state.observability = runtime
     app.state.secret_provider = (
-        secret_provider
-        if secret_provider is not None
-        else build_environment_secret_provider()
+        secret_provider if secret_provider is not None else build_environment_secret_provider()
     )
     app.state.startup_complete = False
 

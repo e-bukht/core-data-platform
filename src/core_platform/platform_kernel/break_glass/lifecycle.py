@@ -34,6 +34,5 @@ def require_break_glass_status_transition(
         return
 
     raise ValueError(
-        "Break-glass grant status transition "
-        f"{current.value} -> {target.value} is not allowed"
+        f"Break-glass grant status transition {current.value} -> {target.value} is not allowed"
     )

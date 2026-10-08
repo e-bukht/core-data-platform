@@ -19,9 +19,7 @@ def load_ed25519_private_key(
     provider: SecretProvider,
     reference: SecretReference,
 ) -> Ed25519PrivateKey:
-    encoded = provider.get_secret(
-        reference
-    ).reveal_bytes()
+    encoded = provider.get_secret(reference).reveal_bytes()
 
     try:
         der = base64.b64decode(
@@ -39,16 +37,12 @@ def load_ed25519_private_key(
         binascii.Error,
         UnsupportedAlgorithm,
     ):
-        raise RuntimeError(
-            "Evidence signing private key is invalid"
-        ) from None
+        raise RuntimeError("Evidence signing private key is invalid") from None
 
     if not isinstance(
         private_key,
         Ed25519PrivateKey,
     ):
-        raise RuntimeError(
-            "Evidence signing private key has unexpected type"
-        )
+        raise RuntimeError("Evidence signing private key has unexpected type")
 
     return private_key

@@ -86,10 +86,7 @@ class EvidenceService:
             record_id,
         )
 
-        if (
-            record is None
-            or record.envelope.tenant_id != context.tenant_id
-        ):
+        if record is None or record.envelope.tenant_id != context.tenant_id:
             raise ResourceNotFound(
                 "EVIDENCE.NOT_FOUND",
                 "Evidence record was not found",

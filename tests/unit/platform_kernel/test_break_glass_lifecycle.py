@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 import pytest
 
@@ -73,8 +73,7 @@ def test_forbidden_break_glass_status_transitions(
     with pytest.raises(
         ValueError,
         match=(
-            "Break-glass grant status transition "
-            f"{current.value} -> {target.value} is not allowed"
+            f"Break-glass grant status transition {current.value} -> {target.value} is not allowed"
         ),
     ):
         require_break_glass_status_transition(

@@ -33,9 +33,7 @@ def _normalize_json(value: JsonValue) -> JsonValue:
     for key, item in value.items():
         normalized_key = _normalize_text(key)
         if normalized_key in normalized:
-            raise ValueError(
-                "JSON object contains keys that collide after Unicode normalization"
-            )
+            raise ValueError("JSON object contains keys that collide after Unicode normalization")
         normalized[normalized_key] = _normalize_json(item)
 
     return normalized

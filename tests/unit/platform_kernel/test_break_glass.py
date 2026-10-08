@@ -20,19 +20,11 @@ from core_platform.platform_kernel.ids import (
 
 def _grant(
     *,
-    status: BreakGlassGrantStatus = (
-        BreakGlassGrantStatus.ACTIVE
-    ),
-    capabilities: tuple[str, ...] = (
-        "platform.outbox.retry",
-    ),
+    status: BreakGlassGrantStatus = (BreakGlassGrantStatus.ACTIVE),
+    capabilities: tuple[str, ...] = ("platform.outbox.retry",),
     scope: BreakGlassScope | None = None,
-    accepted_acr_values: frozenset[str] = frozenset(
-        {"urn:core-platform:acr:elevated"}
-    ),
-    required_amr: frozenset[str] = frozenset(
-        {"mfa"}
-    ),
+    accepted_acr_values: frozenset[str] = frozenset({"urn:core-platform:acr:elevated"}),
+    required_amr: frozenset[str] = frozenset({"mfa"}),
 ) -> BreakGlassGrant:
     start = datetime(
         2026,
@@ -49,10 +41,7 @@ def _grant(
         actor_id=ActorId.new(),
         issued_by_actor_id=ActorId.new(),
         capabilities=capabilities,
-        scope=scope
-        or BreakGlassScope(
-            BreakGlassScopeKind.TENANT
-        ),
+        scope=scope or BreakGlassScope(BreakGlassScopeKind.TENANT),
         reason="Emergency operational recovery",
         valid_from=start,
         valid_until=start + timedelta(minutes=30),
@@ -65,15 +54,9 @@ def _grant(
 def test_active_grant_is_temporally_bounded() -> None:
     grant = _grant()
 
-    assert grant.is_active_at(
-        grant.valid_from
-    )
-    assert grant.is_active_at(
-        grant.valid_until - timedelta(microseconds=1)
-    )
-    assert not grant.is_active_at(
-        grant.valid_until
-    )
+    assert grant.is_active_at(grant.valid_from)
+    assert grant.is_active_at(grant.valid_until - timedelta(microseconds=1))
+    assert not grant.is_active_at(grant.valid_until)
 
 
 @pytest.mark.parametrize(
@@ -86,13 +69,9 @@ def test_active_grant_is_temporally_bounded() -> None:
 def test_non_active_status_never_activates(
     status: BreakGlassGrantStatus,
 ) -> None:
-    grant = _grant(
-        status=status
-    )
+    grant = _grant(status=status)
 
-    assert not grant.is_active_at(
-        grant.valid_from
-    )
+    assert not grant.is_active_at(grant.valid_from)
 
 
 def test_grant_requires_strict_expiration() -> None:
@@ -115,16 +94,12 @@ def test_grant_requires_strict_expiration() -> None:
             actor_id=ActorId.new(),
             issued_by_actor_id=ActorId.new(),
             capabilities=("platform.outbox.retry",),
-            scope=BreakGlassScope(
-                BreakGlassScopeKind.TENANT
-            ),
+            scope=BreakGlassScope(BreakGlassScopeKind.TENANT),
             reason="Emergency recovery",
             valid_from=start,
             valid_until=start,
             status=BreakGlassGrantStatus.ACTIVE,
-            accepted_acr_values=frozenset(
-                {"elevated"}
-            ),
+            accepted_acr_values=frozenset({"elevated"}),
             required_amr=frozenset(),
         )
 
@@ -134,9 +109,7 @@ def test_grant_requires_explicit_capabilities() -> None:
         ValueError,
         match="capabilities must not be empty",
     ):
-        _grant(
-            capabilities=()
-        )
+        _grant(capabilities=())
 
 
 def test_grant_rejects_duplicate_capabilities() -> None:
@@ -164,9 +137,7 @@ def test_grant_requires_elevated_authentication_assurance() -> None:
 
 
 def test_tenant_scope_matches_any_resource() -> None:
-    scope = BreakGlassScope(
-        BreakGlassScopeKind.TENANT
-    )
+    scope = BreakGlassScope(BreakGlassScopeKind.TENANT)
 
     assert scope.matches(
         resource_type=None,
@@ -214,10 +185,7 @@ def test_resource_scope_is_exact() -> None:
 def test_resource_scope_requires_complete_identity() -> None:
     with pytest.raises(
         ValueError,
-        match=(
-            "RESOURCE scope requires "
-            "resource_type and resource_id"
-        ),
+        match=("RESOURCE scope requires resource_type and resource_id"),
     ):
         BreakGlassScope(
             BreakGlassScopeKind.RESOURCE,
@@ -247,9 +215,5 @@ def test_elevation_context_is_explicit_and_bounded() -> None:
 def test_grant_capability_check_is_explicit() -> None:
     grant = _grant()
 
-    assert grant.permits_capability(
-        "platform.outbox.retry"
-    )
-    assert not grant.permits_capability(
-        "platform.audit.delete"
-    )
+    assert grant.permits_capability("platform.outbox.retry")
+    assert not grant.permits_capability("platform.audit.delete")

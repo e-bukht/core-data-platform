@@ -26,10 +26,7 @@ def test_certification_telemetry_collector_captures_spans_and_metrics(
 
     assert len(spans) == 1
     assert spans[0].name == "certification.telemetry"
-    assert (
-        spans[0].resource.attributes["service.name"]
-        == "core-data-platform-certification"
-    )
+    assert spans[0].resource.attributes["service.name"] == "core-data-platform-certification"
     assert spans[0].resource.attributes["service.version"] == "test-platform"
     assert spans[0].resource.attributes["deployment.environment.name"] == "test"
 

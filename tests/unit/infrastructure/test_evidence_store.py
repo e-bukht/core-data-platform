@@ -24,21 +24,11 @@ from core_platform.platform_kernel.ids import ActorId, TenantId
 from core_platform.transaction_kernel.ids import TransactionId
 from core_platform.transaction_kernel.models import TransactionContext
 
-TENANT_ID = TenantId(
-    UUID("00000000-0000-7600-8000-000000001001")
-)
-ACTOR_ID = ActorId(
-    UUID("00000000-0000-7600-8000-000000001002")
-)
-CORRELATION_ID = CorrelationId(
-    UUID("00000000-0000-7600-8000-000000001003")
-)
-TRANSACTION_ID = TransactionId(
-    UUID("00000000-0000-7600-8000-000000001004")
-)
-AUDIT_ID = UUID(
-    "00000000-0000-7600-8000-000000001005"
-)
+TENANT_ID = TenantId(UUID("00000000-0000-7600-8000-000000001001"))
+ACTOR_ID = ActorId(UUID("00000000-0000-7600-8000-000000001002"))
+CORRELATION_ID = CorrelationId(UUID("00000000-0000-7600-8000-000000001003"))
+TRANSACTION_ID = TransactionId(UUID("00000000-0000-7600-8000-000000001004"))
+AUDIT_ID = UUID("00000000-0000-7600-8000-000000001005")
 
 NOW = datetime(
     2026,
@@ -73,11 +63,7 @@ def _record() -> EvidenceRecord:
     return EvidenceRecord(
         envelope=EvidenceEnvelope(
             envelope_version=1,
-            record_id=EvidenceRecordId(
-                UUID(
-                    "00000000-0000-7600-8000-000000001006"
-                )
-            ),
+            record_id=EvidenceRecordId(UUID("00000000-0000-7600-8000-000000001006")),
             tenant_id=TENANT_ID,
             audit_record_id=AUDIT_ID,
             transaction_id=TRANSACTION_ID.value,
@@ -97,9 +83,7 @@ def _record() -> EvidenceRecord:
 
 class _UnusedConnection:
     def __call__(self) -> None:
-        raise AssertionError(
-            "Database must not be touched after trust guard failure"
-        )
+        raise AssertionError("Database must not be touched after trust guard failure")
 
 
 def _assert_context_divergence(
@@ -134,11 +118,7 @@ def test_append_rejects_tenant_divergence_before_io() -> None:
     _assert_context_divergence(
         replace(
             record.envelope,
-            tenant_id=TenantId(
-                UUID(
-                    "00000000-0000-7600-8000-000000009001"
-                )
-            ),
+            tenant_id=TenantId(UUID("00000000-0000-7600-8000-000000009001")),
         ),
         "Evidence tenant does not match UnitOfWork",
     )
@@ -150,9 +130,7 @@ def test_append_rejects_transaction_divergence_before_io() -> None:
     _assert_context_divergence(
         replace(
             record.envelope,
-            transaction_id=UUID(
-                "00000000-0000-7600-8000-000000009002"
-            ),
+            transaction_id=UUID("00000000-0000-7600-8000-000000009002"),
         ),
         "Evidence transaction does not match UnitOfWork",
     )
@@ -164,11 +142,7 @@ def test_append_rejects_actor_divergence_before_io() -> None:
     _assert_context_divergence(
         replace(
             record.envelope,
-            actor_id=ActorId(
-                UUID(
-                    "00000000-0000-7600-8000-000000009003"
-                )
-            ),
+            actor_id=ActorId(UUID("00000000-0000-7600-8000-000000009003")),
         ),
         "Evidence actor does not match UnitOfWork",
     )
@@ -180,14 +154,11 @@ def test_append_rejects_correlation_divergence_before_io() -> None:
     _assert_context_divergence(
         replace(
             record.envelope,
-            correlation_id=CorrelationId(
-                UUID(
-                    "00000000-0000-7600-8000-000000009004"
-                )
-            ),
+            correlation_id=CorrelationId(UUID("00000000-0000-7600-8000-000000009004")),
         ),
         "Evidence correlation does not match UnitOfWork",
     )
+
 
 def test_append_rejects_payload_hash_divergence_before_io() -> None:
     async def run() -> None:
@@ -203,9 +174,7 @@ def test_append_rejects_payload_hash_divergence_before_io() -> None:
 
         with pytest.raises(
             ValueError,
-            match=(
-                "Evidence payload hash does not match canonical payload"
-            ),
+            match=("Evidence payload hash does not match canonical payload"),
         ):
             await repository.append(record)
 

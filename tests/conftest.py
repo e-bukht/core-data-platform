@@ -49,6 +49,4 @@ def _test_only_evidence_key() -> str:
 # Test-only material remains process-local and is never printed or persisted.
 os.environ.setdefault("CORE_PLATFORM_EVIDENCE_SIGNING_KEY_ID", "test-ephemeral-ed25519")
 if not os.environ.get("CORE_PLATFORM_EVIDENCE_SIGNING_PRIVATE_KEY_B64"):
-    os.environ["CORE_PLATFORM_EVIDENCE_SIGNING_PRIVATE_KEY_B64"] = (
-        _test_only_evidence_key()
-    )
+    os.environ["CORE_PLATFORM_EVIDENCE_SIGNING_PRIVATE_KEY_B64"] = _test_only_evidence_key()

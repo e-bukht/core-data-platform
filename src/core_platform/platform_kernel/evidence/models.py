@@ -20,11 +20,7 @@ def _require_aware(value: datetime, field_name: str) -> None:
 
 
 def _utc_timestamp(value: datetime) -> str:
-    return (
-        value.astimezone(UTC)
-        .isoformat()
-        .replace("+00:00", "Z")
-    )
+    return value.astimezone(UTC).isoformat().replace("+00:00", "Z")
 
 
 @dataclass(frozen=True, slots=True)

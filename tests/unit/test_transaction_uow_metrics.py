@@ -102,15 +102,9 @@ def _context() -> TransactionContext:
     return cast(
         TransactionContext,
         _FakeContext(
-            tenant_id=_Identifier(
-                UUID("00000000-0000-0000-0000-000000000001")
-            ),
-            actor_id=_Identifier(
-                UUID("00000000-0000-0000-0000-000000000002")
-            ),
-            correlation_id=_Identifier(
-                UUID("00000000-0000-0000-0000-000000000003")
-            ),
+            tenant_id=_Identifier(UUID("00000000-0000-0000-0000-000000000001")),
+            actor_id=_Identifier(UUID("00000000-0000-0000-0000-000000000002")),
+            correlation_id=_Identifier(UUID("00000000-0000-0000-0000-000000000003")),
         ),
     )
 
@@ -120,19 +114,22 @@ def _database() -> Database:
 
 
 async def _exercise_uow_metrics() -> _RecordingMetrics:
+    from core_platform.infrastructure.observability.metrics import InfrastructureMetrics
+
     metrics = _RecordingMetrics()
+    typed_metrics = cast(InfrastructureMetrics, metrics)
 
     async with PostgresUnitOfWork(
         _database(),
         _context(),
-        metrics=metrics,
+        metrics=typed_metrics,
     ) as uow:
         await uow.commit()
 
     async with PostgresUnitOfWork(
         _database(),
         _context(),
-        metrics=metrics,
+        metrics=typed_metrics,
     ) as uow:
         await uow.rollback()
 
@@ -140,7 +137,7 @@ async def _exercise_uow_metrics() -> _RecordingMetrics:
         async with PostgresUnitOfWork(
             _database(),
             _context(),
-            metrics=metrics,
+            metrics=typed_metrics,
         ):
             raise RuntimeError("simulated business failure")
     except RuntimeError:

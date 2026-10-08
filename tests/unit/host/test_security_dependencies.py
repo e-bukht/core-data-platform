@@ -36,31 +36,11 @@ NOW = datetime(
     tzinfo=UTC,
 )
 
-TENANT_ID = TenantId(
-    UUID(
-        "00000000-0000-7a00-8000-000000001001"
-    )
-)
-ACTOR_ID = ActorId(
-    UUID(
-        "00000000-0000-7a00-8000-000000001002"
-    )
-)
-ISSUER_ID = ActorId(
-    UUID(
-        "00000000-0000-7a00-8000-000000001003"
-    )
-)
-GRANT_ID = BreakGlassGrantId(
-    UUID(
-        "00000000-0000-7a00-8000-000000001004"
-    )
-)
-CORRELATION_ID = CorrelationId(
-    UUID(
-        "00000000-0000-7a00-8000-000000001005"
-    )
-)
+TENANT_ID = TenantId(UUID("00000000-0000-7a00-8000-000000001001"))
+ACTOR_ID = ActorId(UUID("00000000-0000-7a00-8000-000000001002"))
+ISSUER_ID = ActorId(UUID("00000000-0000-7a00-8000-000000001003"))
+GRANT_ID = BreakGlassGrantId(UUID("00000000-0000-7a00-8000-000000001004"))
+CORRELATION_ID = CorrelationId(UUID("00000000-0000-7a00-8000-000000001005"))
 
 
 class _FakeService:
@@ -79,9 +59,7 @@ class _FakeService:
 
 class _FakeLogger:
     def __init__(self) -> None:
-        self.entries: list[
-            tuple[str, dict[str, object]]
-        ] = []
+        self.entries: list[tuple[str, dict[str, object]]] = []
 
     async def ainfo(
         self,
@@ -134,12 +112,8 @@ def _context(
             grant_id=GRANT_ID,
             issued_by_actor_id=ISSUER_ID,
             capability="platform.context.read",
-            scope=BreakGlassScope(
-                BreakGlassScopeKind.TENANT
-            ),
-            reason=(
-                "Sensitive emergency operational reason"
-            ),
+            scope=BreakGlassScope(BreakGlassScopeKind.TENANT),
+            reason=("Sensitive emergency operational reason"),
             activated_at=NOW,
             valid_until=NOW + timedelta(minutes=20),
         )
@@ -163,9 +137,7 @@ def _request(
                 correlation_header="X-Correlation-Id",
                 tenant_header="X-Tenant-Id",
             ),
-            context_trust=_FakeService(
-                context
-            ),
+            context_trust=_FakeService(context),
         )
     )
 
@@ -204,9 +176,7 @@ def _request(
         "app": app,
     }
 
-    return Request(
-        scope=scope
-    )
+    return Request(scope=scope)
 
 
 async def _exercise_dependency(
@@ -219,9 +189,7 @@ async def _exercise_dependency(
     fake_logger = _FakeLogger()
     dependencies.logger = fake_logger
 
-    dependency = dependencies.require_capability(
-        "platform.context.read"
-    )
+    dependency = dependencies.require_capability("platform.context.read")
 
     generator = dependency(
         _request(context),
@@ -235,16 +203,12 @@ async def _exercise_dependency(
     resolved = await anext(generator)
     assert resolved == context
 
-    bound_during = dict(
-        get_contextvars()
-    )
+    bound_during = dict(get_contextvars())
 
     with pytest.raises(StopAsyncIteration):
         await anext(generator)
 
-    bound_after = dict(
-        get_contextvars()
-    )
+    bound_after = dict(get_contextvars())
 
     return (
         fake_logger,
@@ -254,13 +218,7 @@ async def _exercise_dependency(
 
 
 def test_normal_allow_logging_remains_unchanged() -> None:
-    logger, bound_during, bound_after = asyncio.run(
-        _exercise_dependency(
-            _context(
-                elevated=False
-            )
-        )
-    )
+    logger, bound_during, bound_after = asyncio.run(_exercise_dependency(_context(elevated=False)))
 
     assert len(logger.entries) == 1
 
@@ -281,13 +239,7 @@ def test_normal_allow_logging_remains_unchanged() -> None:
 
 
 def test_break_glass_allow_logs_only_safe_elevation_metadata() -> None:
-    logger, bound_during, bound_after = asyncio.run(
-        _exercise_dependency(
-            _context(
-                elevated=True
-            )
-        )
-    )
+    logger, bound_during, bound_after = asyncio.run(_exercise_dependency(_context(elevated=True)))
 
     assert len(logger.entries) == 1
 
@@ -297,19 +249,12 @@ def test_break_glass_allow_logs_only_safe_elevation_metadata() -> None:
     assert fields["effect"] == "ALLOW"
 
     assert fields["break_glass"] is True
-    assert fields["break_glass_grant_id"] == str(
-        GRANT_ID.value
-    )
+    assert fields["break_glass_grant_id"] == str(GRANT_ID.value)
     assert fields["break_glass_scope_kind"] == "TENANT"
 
     assert bound_during["break_glass"] is True
-    assert bound_during["break_glass_grant_id"] == str(
-        GRANT_ID.value
-    )
-    assert (
-        bound_during["break_glass_scope_kind"]
-        == "TENANT"
-    )
+    assert bound_during["break_glass_grant_id"] == str(GRANT_ID.value)
+    assert bound_during["break_glass_scope_kind"] == "TENANT"
 
     serialized = repr(
         {
@@ -318,10 +263,7 @@ def test_break_glass_allow_logs_only_safe_elevation_metadata() -> None:
         }
     )
 
-    assert (
-        "Sensitive emergency operational reason"
-        not in serialized
-    )
+    assert "Sensitive emergency operational reason" not in serialized
     assert "reason" not in fields
     assert "issued_by_actor_id" not in fields
 

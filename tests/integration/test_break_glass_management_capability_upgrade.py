@@ -9,21 +9,15 @@ from tests.integration.db_support import (
     run_alembic,
 )
 
-CAPABILITY_ID = (
-    "00000000-0000-7000-8000-000000000105"
-)
+CAPABILITY_ID = "00000000-0000-7000-8000-000000000105"
 CAPABILITY_CODE = "platform.break-glass.manage"
-EXPECTED_REVISION = (
-    "0006_bg_manage_capability"
-)
+EXPECTED_REVISION = "0006_bg_manage_capability"
 
 
 def _assert_capability_absent(
     migration_url: str,
 ) -> None:
-    engine = create_engine(
-        migration_url
-    )
+    engine = create_engine(migration_url)
 
     try:
         with engine.connect() as connection:
@@ -48,9 +42,7 @@ def _assert_capability_absent(
 def _assert_capability_registered(
     migration_url: str,
 ) -> None:
-    engine = create_engine(
-        migration_url
-    )
+    engine = create_engine(migration_url)
 
     try:
         with engine.connect() as connection:
@@ -104,9 +96,7 @@ def _assert_capability_registered(
             assert revision == EXPECTED_REVISION
             assert capability["id"] == CAPABILITY_ID
             assert capability["code"] == CAPABILITY_CODE
-            assert capability["description"] == (
-                "Manage tenant-scoped break-glass grants"
-            )
+            assert capability["description"] == ("Manage tenant-scoped break-glass grants")
             assert capability["risk_class"] == "CRITICAL"
             assert capability["status"] == "ACTIVE"
 
@@ -120,14 +110,8 @@ def _assert_capability_registered(
 def _exercise_upgrade(
     image: str,
 ) -> None:
-    with PostgresContainer(
-        image
-    ) as postgres:
-        migration_url, runtime_url = (
-            provision_roles(
-                admin_url(postgres)
-            )
-        )
+    with PostgresContainer(image) as postgres:
+        migration_url, runtime_url = provision_roles(admin_url(postgres))
 
         run_alembic(
             migration_url,
@@ -135,9 +119,7 @@ def _exercise_upgrade(
             "0005_break_glass",
         )
 
-        _assert_capability_absent(
-            migration_url
-        )
+        _assert_capability_absent(migration_url)
 
         run_alembic(
             migration_url,
@@ -145,18 +127,12 @@ def _exercise_upgrade(
             "head",
         )
 
-        _assert_capability_registered(
-            migration_url
-        )
+        _assert_capability_registered(migration_url)
 
 
 def test_break_glass_management_capability_upgrade_postgres_12() -> None:
-    _exercise_upgrade(
-        "postgres:12.22"
-    )
+    _exercise_upgrade("postgres:12.22")
 
 
 def test_break_glass_management_capability_upgrade_postgres_18() -> None:
-    _exercise_upgrade(
-        "postgres:18"
-    )
+    _exercise_upgrade("postgres:18")

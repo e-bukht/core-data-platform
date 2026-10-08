@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
 from uuid import UUID
@@ -35,21 +35,11 @@ NOW = datetime(
     tzinfo=UTC,
 )
 
-TENANT_ID = TenantId(
-    UUID("00000000-0000-7000-8000-000000000101")
-)
-ACTOR_ID = ActorId(
-    UUID("00000000-0000-7000-8000-000000000102")
-)
-ISSUER_ID = ActorId(
-    UUID("00000000-0000-7000-8000-000000000103")
-)
-GRANT_ID = BreakGlassGrantId(
-    UUID("00000000-0000-7000-8000-000000000104")
-)
-CORRELATION_ID = CorrelationId(
-    UUID("00000000-0000-7000-8000-000000000105")
-)
+TENANT_ID = TenantId(UUID("00000000-0000-7000-8000-000000000101"))
+ACTOR_ID = ActorId(UUID("00000000-0000-7000-8000-000000000102"))
+ISSUER_ID = ActorId(UUID("00000000-0000-7000-8000-000000000103"))
+GRANT_ID = BreakGlassGrantId(UUID("00000000-0000-7000-8000-000000000104"))
+CORRELATION_ID = CorrelationId(UUID("00000000-0000-7000-8000-000000000105"))
 
 
 def _authentication() -> AuthenticationContext:
@@ -78,9 +68,7 @@ def _context(
             grant_id=GRANT_ID,
             issued_by_actor_id=ISSUER_ID,
             capability=elevation_capability,
-            scope=BreakGlassScope(
-                BreakGlassScopeKind.TENANT
-            ),
+            scope=BreakGlassScope(BreakGlassScopeKind.TENANT),
             reason="Emergency recovery",
             activated_at=NOW,
             valid_until=NOW + timedelta(minutes=20),
@@ -123,7 +111,4 @@ def test_any_break_glass_elevation_is_rejected_for_management(
             )
         )
 
-    assert (
-        exc.value.code
-        == BREAK_GLASS_MANAGEMENT_DIRECT_AUTHORIZATION_ERROR
-    )
+    assert exc.value.code == BREAK_GLASS_MANAGEMENT_DIRECT_AUTHORIZATION_ERROR

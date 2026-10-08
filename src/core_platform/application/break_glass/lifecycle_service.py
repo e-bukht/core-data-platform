@@ -37,44 +37,24 @@ from core_platform.transaction_kernel.models import (
 )
 
 BREAK_GLASS_ISSUE_OPERATION = "security.break-glass.issue"
-BREAK_GLASS_ISSUE_EVIDENCE_TYPE = (
-    "security.break-glass.issuance"
-)
+BREAK_GLASS_ISSUE_EVIDENCE_TYPE = "security.break-glass.issuance"
 
-BREAK_GLASS_SUSPEND_OPERATION = (
-    "security.break-glass.suspend"
-)
-BREAK_GLASS_SUSPEND_EVIDENCE_TYPE = (
-    "security.break-glass.suspension"
-)
+BREAK_GLASS_SUSPEND_OPERATION = "security.break-glass.suspend"
+BREAK_GLASS_SUSPEND_EVIDENCE_TYPE = "security.break-glass.suspension"
 
-BREAK_GLASS_RESUME_OPERATION = (
-    "security.break-glass.resume"
-)
-BREAK_GLASS_RESUME_EVIDENCE_TYPE = (
-    "security.break-glass.resumption"
-)
+BREAK_GLASS_RESUME_OPERATION = "security.break-glass.resume"
+BREAK_GLASS_RESUME_EVIDENCE_TYPE = "security.break-glass.resumption"
 
-BREAK_GLASS_REVOKE_OPERATION = (
-    "security.break-glass.revoke"
-)
-BREAK_GLASS_REVOKE_EVIDENCE_TYPE = (
-    "security.break-glass.revocation"
-)
+BREAK_GLASS_REVOKE_OPERATION = "security.break-glass.revoke"
+BREAK_GLASS_REVOKE_EVIDENCE_TYPE = "security.break-glass.revocation"
 BREAK_GLASS_RESOURCE_TYPE = "BreakGlassGrant"
 
 
 def _utc_iso(value: datetime) -> str:
     if value.tzinfo is None or value.utcoffset() is None:
-        raise ValueError(
-            "Break-glass timestamp must be timezone-aware"
-        )
+        raise ValueError("Break-glass timestamp must be timezone-aware")
 
-    return (
-        value.astimezone(UTC)
-        .isoformat(timespec="microseconds")
-        .replace("+00:00", "Z")
-    )
+    return value.astimezone(UTC).isoformat(timespec="microseconds").replace("+00:00", "Z")
 
 
 def _issue_payload(
@@ -89,9 +69,7 @@ def _issue_payload(
         "tenant_id": str(context.tenant_id.value),
         "grant_id": str(grant.grant_id.value),
         "actor_id": str(grant.actor_id.value),
-        "issued_by_actor_id": str(
-            grant.issued_by_actor_id.value
-        ),
+        "issued_by_actor_id": str(grant.issued_by_actor_id.value),
         "capabilities": list(grant.capabilities),
         "scope": {
             "kind": grant.scope.kind.value,
@@ -102,12 +80,8 @@ def _issue_payload(
         "valid_from": _utc_iso(grant.valid_from),
         "valid_until": _utc_iso(grant.valid_until),
         "status": grant.status.value,
-        "accepted_acr_values": list(
-            sorted(grant.accepted_acr_values)
-        ),
-        "required_amr": list(
-            sorted(grant.required_amr)
-        ),
+        "accepted_acr_values": list(sorted(grant.accepted_acr_values)),
+        "required_amr": list(sorted(grant.required_amr)),
         "issued_at": _utc_iso(issued_at),
     }
 
@@ -128,9 +102,7 @@ def _transition_payload(
         "outcome": "SUCCESS",
         "tenant_id": str(context.tenant_id.value),
         "grant_id": str(grant_id.value),
-        "changed_by_actor_id": str(
-            context.actor_id.value
-        ),
+        "changed_by_actor_id": str(context.actor_id.value),
         "from_status": current_status.value,
         "to_status": target_status.value,
         "expected_version": expected_version,
@@ -160,19 +132,12 @@ class BreakGlassLifecycleService:
         context: ExecutionContext,
         command: BreakGlassIssueCommand,
     ) -> BreakGlassIssueResult:
-        require_direct_break_glass_management(
-            context
-        )
+        require_direct_break_glass_management(context)
 
         issued_at = self._clock.now()
 
-        if (
-            issued_at.tzinfo is None
-            or issued_at.utcoffset() is None
-        ):
-            raise ValueError(
-                "Clock returned a naive timestamp"
-            )
+        if issued_at.tzinfo is None or issued_at.utcoffset() is None:
+            raise ValueError("Clock returned a naive timestamp")
 
         try:
             grant = BreakGlassGrant(
@@ -186,27 +151,21 @@ class BreakGlassLifecycleService:
                 valid_from=command.valid_from,
                 valid_until=command.valid_until,
                 status=BreakGlassGrantStatus.ACTIVE,
-                accepted_acr_values=(
-                    command.accepted_acr_values
-                ),
+                accepted_acr_values=(command.accepted_acr_values),
                 required_amr=command.required_amr,
             )
         except ValueError as exc:
             raise ValidationError(
                 "BREAK_GLASS.ISSUE.INVALID",
                 "Break-glass issuance request is invalid",
-                correlation_id=str(
-                    context.correlation_id
-                ),
+                correlation_id=str(context.correlation_id),
             ) from exc
 
         if grant.valid_until <= issued_at:
             raise ValidationError(
                 "BREAK_GLASS.ISSUE.EXPIRED",
                 "Break-glass grant must expire after issuance",
-                correlation_id=str(
-                    context.correlation_id
-                ),
+                correlation_id=str(context.correlation_id),
             )
 
         transaction_id = TransactionId.new()
@@ -244,18 +203,14 @@ class BreakGlassLifecycleService:
             details=payload,
         )
 
-        evidence_record = (
-            await self._evidence_factory.create(
-                context=context,
-                audit_record_id=audit_record_id.value,
-                transaction_id=transaction_id.value,
-                evidence_type=(
-                    BREAK_GLASS_ISSUE_EVIDENCE_TYPE
-                ),
-                occurred_at=issued_at,
-                payload=payload,
-                signed_at=issued_at,
-            )
+        evidence_record = await self._evidence_factory.create(
+            context=context,
+            audit_record_id=audit_record_id.value,
+            transaction_id=transaction_id.value,
+            evidence_type=(BREAK_GLASS_ISSUE_EVIDENCE_TYPE),
+            occurred_at=issued_at,
+            payload=payload,
+            signed_at=issued_at,
         )
 
         version = await self._persistence.persist_issue(
@@ -285,9 +240,7 @@ class BreakGlassLifecycleService:
             expected_version=expected_version,
             transition_reason=transition_reason,
             operation=BREAK_GLASS_SUSPEND_OPERATION,
-            evidence_type=(
-                BREAK_GLASS_SUSPEND_EVIDENCE_TYPE
-            ),
+            evidence_type=(BREAK_GLASS_SUSPEND_EVIDENCE_TYPE),
             event="break-glass.suspension",
             current_status=BreakGlassGrantStatus.ACTIVE,
             target_status=BreakGlassGrantStatus.SUSPENDED,
@@ -307,9 +260,7 @@ class BreakGlassLifecycleService:
             expected_version=expected_version,
             transition_reason=transition_reason,
             operation=BREAK_GLASS_RESUME_OPERATION,
-            evidence_type=(
-                BREAK_GLASS_RESUME_EVIDENCE_TYPE
-            ),
+            evidence_type=(BREAK_GLASS_RESUME_EVIDENCE_TYPE),
             event="break-glass.resumption",
             current_status=BreakGlassGrantStatus.SUSPENDED,
             target_status=BreakGlassGrantStatus.ACTIVE,
@@ -330,13 +281,8 @@ class BreakGlassLifecycleService:
         }:
             raise ValidationError(
                 "BREAK_GLASS.REVOKE.INVALID_SOURCE_STATUS",
-                (
-                    "Break-glass grant can only be revoked "
-                    "from ACTIVE or SUSPENDED"
-                ),
-                correlation_id=str(
-                    context.correlation_id
-                ),
+                ("Break-glass grant can only be revoked from ACTIVE or SUSPENDED"),
+                correlation_id=str(context.correlation_id),
             )
 
         return await self._transition(
@@ -345,9 +291,7 @@ class BreakGlassLifecycleService:
             expected_version=expected_version,
             transition_reason=transition_reason,
             operation=BREAK_GLASS_REVOKE_OPERATION,
-            evidence_type=(
-                BREAK_GLASS_REVOKE_EVIDENCE_TYPE
-            ),
+            evidence_type=(BREAK_GLASS_REVOKE_EVIDENCE_TYPE),
             event="break-glass.revocation",
             current_status=expected_current_status,
             target_status=BreakGlassGrantStatus.REVOKED,
@@ -366,17 +310,13 @@ class BreakGlassLifecycleService:
         current_status: BreakGlassGrantStatus,
         target_status: BreakGlassGrantStatus,
     ) -> int:
-        require_direct_break_glass_management(
-            context
-        )
+        require_direct_break_glass_management(context)
 
         if expected_version < 0:
             raise ValidationError(
                 "BREAK_GLASS.TRANSITION.INVALID",
                 "Break-glass transition request is invalid",
-                correlation_id=str(
-                    context.correlation_id
-                ),
+                correlation_id=str(context.correlation_id),
             )
 
         normalized_reason = transition_reason.strip()
@@ -385,20 +325,13 @@ class BreakGlassLifecycleService:
             raise ValidationError(
                 "BREAK_GLASS.TRANSITION.INVALID",
                 "Break-glass transition request is invalid",
-                correlation_id=str(
-                    context.correlation_id
-                ),
+                correlation_id=str(context.correlation_id),
             )
 
         changed_at = self._clock.now()
 
-        if (
-            changed_at.tzinfo is None
-            or changed_at.utcoffset() is None
-        ):
-            raise ValueError(
-                "Clock returned a naive timestamp"
-            )
+        if changed_at.tzinfo is None or changed_at.utcoffset() is None:
+            raise ValueError("Clock returned a naive timestamp")
 
         transaction_id = TransactionId.new()
         audit_record_id = AuditRecordId.new()
@@ -440,16 +373,14 @@ class BreakGlassLifecycleService:
             details=payload,
         )
 
-        evidence_record = (
-            await self._evidence_factory.create(
-                context=context,
-                audit_record_id=audit_record_id.value,
-                transaction_id=transaction_id.value,
-                evidence_type=evidence_type,
-                occurred_at=changed_at,
-                payload=payload,
-                signed_at=changed_at,
-            )
+        evidence_record = await self._evidence_factory.create(
+            context=context,
+            audit_record_id=audit_record_id.value,
+            transaction_id=transaction_id.value,
+            evidence_type=evidence_type,
+            occurred_at=changed_at,
+            payload=payload,
+            signed_at=changed_at,
         )
 
         return await self._persistence.persist_transition(

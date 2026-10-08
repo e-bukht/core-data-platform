@@ -231,8 +231,4 @@ def test_reusable_cross_tenant_denial_assertion(
 ) -> None:
     _seed(cert_postgres)
 
-    asyncio.run(
-        _assert_isolation(
-            cert_postgres
-        )
-    )
+    asyncio.run(_assert_isolation(cert_postgres))

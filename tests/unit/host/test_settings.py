@@ -18,7 +18,6 @@ def test_algorithm_change_requires_code_and_adr() -> None:
 def test_production_oidc_issuer_must_use_https() -> None:
     with pytest.raises(PydanticValidationError):
         Settings(
-
             environment="prod",
             oidc_issuer="http://issuer.example/realms/platform",
         )

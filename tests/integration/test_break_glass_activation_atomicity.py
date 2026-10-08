@@ -83,44 +83,26 @@ NOW = datetime(
     tzinfo=UTC,
 )
 
-TENANT_ID = TenantId(
-    UUID(
-        "00000000-0000-7d00-8000-000000001001"
-    )
-)
-ACTOR_ID = ActorId(
-    UUID(
-        "00000000-0000-7d00-8000-000000001002"
-    )
-)
-CORRELATION_ID = CorrelationId(
-    UUID(
-        "00000000-0000-7d00-8000-000000001003"
-    )
-)
+TENANT_ID = TenantId(UUID("00000000-0000-7d00-8000-000000001001"))
+ACTOR_ID = ActorId(UUID("00000000-0000-7d00-8000-000000001002"))
+CORRELATION_ID = CorrelationId(UUID("00000000-0000-7d00-8000-000000001003"))
 
 
 def _selector_loop_factory() -> asyncio.AbstractEventLoop:
-    return asyncio.SelectorEventLoop(
-        selectors.SelectSelector()
-    )
+    return asyncio.SelectorEventLoop(selectors.SelectSelector())
 
 
 def _run(
     coro: Coroutine[Any, Any, None],
 ) -> None:
-    with asyncio.Runner(
-        loop_factory=_selector_loop_factory
-    ) as runner:
+    with asyncio.Runner(loop_factory=_selector_loop_factory) as runner:
         runner.run(coro)
 
 
 def _seed(
     migration_url: str,
 ) -> None:
-    engine = create_engine(
-        migration_url
-    )
+    engine = create_engine(migration_url)
 
     try:
         with engine.begin() as connection:
@@ -141,11 +123,7 @@ def _seed(
                     )
                     """
                 ),
-                {
-                    "tenant_id": str(
-                        TENANT_ID.value
-                    )
-                },
+                {"tenant_id": str(TENANT_ID.value)},
             )
 
             connection.execute(
@@ -165,11 +143,7 @@ def _seed(
                     )
                     """
                 ),
-                {
-                    "actor_id": str(
-                        ACTOR_ID.value
-                    )
-                },
+                {"actor_id": str(ACTOR_ID.value)},
             )
     finally:
         engine.dispose()
@@ -183,9 +157,7 @@ def _context(
         tenant_id=TENANT_ID,
         actor_id=ACTOR_ID,
         correlation_id=CORRELATION_ID,
-        operation=(
-            "security.break-glass.activate"
-        ),
+        operation=("security.break-glass.activate"),
         capability="platform.outbox.retry",
         started_at=NOW,
     )
@@ -233,27 +205,17 @@ def _evidence(
             record_id=evidence_id,
             tenant_id=TENANT_ID,
             audit_record_id=audit.record_id.value,
-            transaction_id=(
-                context.transaction_id.value
-            ),
+            transaction_id=(context.transaction_id.value),
             actor_id=ACTOR_ID,
             correlation_id=CORRELATION_ID,
-            evidence_type=(
-                "security.break-glass.activation"
-            ),
+            evidence_type=("security.break-glass.activation"),
             occurred_at=NOW,
             signed_at=NOW,
-            payload_hash=canonical_json_sha256(
-                payload
-            ),
+            payload_hash=canonical_json_sha256(payload),
             signature_algorithm="Ed25519",
-            key_id=(
-                "break-glass-atomicity-test-key"
-            ),
+            key_id=("break-glass-atomicity-test-key"),
         ),
-        canonical_payload=canonical_json_bytes(
-            payload
-        ),
+        canonical_payload=canonical_json_bytes(payload),
         signature=b"test-signature",
     )
 
@@ -264,9 +226,7 @@ async def _counts(
     audit_id: AuditRecordId,
     evidence_id: EvidenceRecordId,
 ) -> tuple[int, int]:
-    async with database.tenant_transaction(
-        TENANT_ID.value
-    ) as connection:
+    async with database.tenant_transaction(TENANT_ID.value) as connection:
         audit_count = await connection.scalar(
             text(
                 """
@@ -275,11 +235,7 @@ async def _counts(
                 WHERE id = CAST(:id AS uuid)
                 """
             ),
-            {
-                "id": str(
-                    audit_id.value
-                )
-            },
+            {"id": str(audit_id.value)},
         )
 
         evidence_count = await connection.scalar(
@@ -290,11 +246,7 @@ async def _counts(
                 WHERE id = CAST(:id AS uuid)
                 """
             ),
-            {
-                "id": str(
-                    evidence_id.value
-                )
-            },
+            {"id": str(evidence_id.value)},
         )
 
     return (
@@ -309,9 +261,7 @@ async def _link_count(
     audit_id: AuditRecordId,
     evidence_id: EvidenceRecordId,
 ) -> int:
-    async with database.tenant_transaction(
-        TENANT_ID.value
-    ) as connection:
+    async with database.tenant_transaction(TENANT_ID.value) as connection:
         count = await connection.scalar(
             text(
                 """
@@ -335,65 +285,35 @@ async def _link_count(
                 """
             ),
             {
-                "audit_id": str(
-                    audit_id.value
-                ),
-                "evidence_id": str(
-                    evidence_id.value
-                ),
+                "audit_id": str(audit_id.value),
+                "evidence_id": str(evidence_id.value),
             },
         )
 
-    return int(
-        count or 0
-    )
+    return int(count or 0)
 
 
 async def _exercise(
     runtime_url: str,
 ) -> None:
-    database = Database(
-        runtime_url
-    )
-    factory = PostgresUnitOfWorkFactory(
-        database
-    )
-    persistence = (
-        PostgresBreakGlassActivationPersistence(
-            factory
-        )
-    )
+    database = Database(runtime_url)
+    factory = PostgresUnitOfWorkFactory(database)
+    persistence = PostgresBreakGlassActivationPersistence(factory)
 
     try:
         # --------------------------------------------------
         # 1. Successful activation persists linked
         #    Audit + Evidence atomically.
         # --------------------------------------------------
-        success_transaction = TransactionId(
-            UUID(
-                "00000000-0000-7d01-8000-000000001001"
-            )
-        )
-        success_audit_id = AuditRecordId(
-            UUID(
-                "00000000-0000-7d02-8000-000000001001"
-            )
-        )
-        success_evidence_id = EvidenceRecordId(
-            UUID(
-                "00000000-0000-7d03-8000-000000001001"
-            )
-        )
+        success_transaction = TransactionId(UUID("00000000-0000-7d01-8000-000000001001"))
+        success_audit_id = AuditRecordId(UUID("00000000-0000-7d02-8000-000000001001"))
+        success_evidence_id = EvidenceRecordId(UUID("00000000-0000-7d03-8000-000000001001"))
 
-        success_context = _context(
-            success_transaction
-        )
+        success_context = _context(success_transaction)
         success_audit = _audit(
             audit_id=success_audit_id,
             context=success_context,
-            grant_id=(
-                "00000000-0000-7d04-8000-000000001001"
-            ),
+            grant_id=("00000000-0000-7d04-8000-000000001001"),
         )
         success_evidence = _evidence(
             evidence_id=success_evidence_id,
@@ -429,31 +349,15 @@ async def _exercise(
         # 2. Evidence failure happens after Audit append.
         #    The PostgreSQL transaction must roll back Audit.
         # --------------------------------------------------
-        failure_transaction = TransactionId(
-            UUID(
-                "00000000-0000-7d01-8000-000000001002"
-            )
-        )
-        failure_audit_id = AuditRecordId(
-            UUID(
-                "00000000-0000-7d02-8000-000000001002"
-            )
-        )
-        failure_evidence_id = EvidenceRecordId(
-            UUID(
-                "00000000-0000-7d03-8000-000000001002"
-            )
-        )
+        failure_transaction = TransactionId(UUID("00000000-0000-7d01-8000-000000001002"))
+        failure_audit_id = AuditRecordId(UUID("00000000-0000-7d02-8000-000000001002"))
+        failure_evidence_id = EvidenceRecordId(UUID("00000000-0000-7d03-8000-000000001002"))
 
-        failure_context = _context(
-            failure_transaction
-        )
+        failure_context = _context(failure_transaction)
         failure_audit = _audit(
             audit_id=failure_audit_id,
             context=failure_context,
-            grant_id=(
-                "00000000-0000-7d04-8000-000000001002"
-            ),
+            grant_id=("00000000-0000-7d04-8000-000000001002"),
         )
         valid_failure_evidence = _evidence(
             evidence_id=failure_evidence_id,
@@ -465,17 +369,13 @@ async def _exercise(
             valid_failure_evidence,
             envelope=replace(
                 valid_failure_evidence.envelope,
-                transaction_id=UUID(
-                    "00000000-0000-7d01-8000-000000009999"
-                ),
+                transaction_id=UUID("00000000-0000-7d01-8000-000000009999"),
             ),
         )
 
         with pytest.raises(
             ValueError,
-            match=(
-                "Evidence transaction does not match UnitOfWork"
-            ),
+            match=("Evidence transaction does not match UnitOfWork"),
         ):
             await persistence.persist(
                 transaction_context=failure_context,
@@ -508,29 +408,18 @@ async def _exercise(
 def test_break_glass_activation_audit_and_evidence_are_atomic(
     image: str,
 ) -> None:
-    with PostgresContainer(
-        image
-    ) as postgres:
-        migration_url, runtime_url = provision_roles(
-            admin_url(
-                postgres
-            )
-        )
+    with PostgresContainer(image) as postgres:
+        migration_url, runtime_url = provision_roles(admin_url(postgres))
 
         run_alembic(
             migration_url,
             runtime_url,
         )
 
-        _seed(
-            migration_url
-        )
+        _seed(migration_url)
 
-        _run(
-            _exercise(
-                runtime_url
-            )
-        )
+        _run(_exercise(runtime_url))
+
 
 async def _exercise_real_signing(runtime_url: str) -> None:
     """Real recorder -> PostgreSQL commit -> retrieval -> signature verification."""
@@ -541,9 +430,7 @@ async def _exercise_real_signing(runtime_url: str) -> None:
         public_keys={key_id: private_key.public_key()},
     )
     now = datetime.now(UTC)
-    grant_id = BreakGlassGrantId(
-        UUID("00000000-0000-7d04-8000-000000001009")
-    )
+    grant_id = BreakGlassGrantId(UUID("00000000-0000-7d04-8000-000000001009"))
     context = ExecutionContext(
         tenant_id=TENANT_ID,
         actor_id=ACTOR_ID,
@@ -563,9 +450,7 @@ async def _exercise_real_signing(runtime_url: str) -> None:
         correlation_id=CORRELATION_ID,
         break_glass=BreakGlassElevationContext(
             grant_id=grant_id,
-            issued_by_actor_id=ActorId(
-                UUID("00000000-0000-7d00-8000-000000001010")
-            ),
+            issued_by_actor_id=ActorId(UUID("00000000-0000-7d00-8000-000000001010")),
             capability="platform.outbox.retry",
             scope=BreakGlassScope(
                 BreakGlassScopeKind.RESOURCE,
@@ -591,9 +476,10 @@ async def _exercise_real_signing(runtime_url: str) -> None:
         # Query through the non-owner runtime role with tenant-local RLS.
         async with database.tenant_transaction(TENANT_ID.value) as connection:
             rows = (
-                await connection.execute(
-                    text(
-                        """
+                (
+                    await connection.execute(
+                        text(
+                            """
                         SELECT
                           a.id AS audit_id,
                           a.tenant_id AS audit_tenant_id,
@@ -614,13 +500,16 @@ async def _exercise_real_signing(runtime_url: str) -> None:
                           AND a.resource_id = :grant_id
                           AND a.action = 'security.break-glass.activate'
                         """
-                    ),
-                    {
-                        "tenant_id": str(TENANT_ID.value),
-                        "grant_id": str(grant_id.value),
-                    },
+                        ),
+                        {
+                            "tenant_id": str(TENANT_ID.value),
+                            "grant_id": str(grant_id.value),
+                        },
+                    )
                 )
-            ).mappings().all()
+                .mappings()
+                .all()
+            )
         assert len(rows) == 1
         row = rows[0]
         assert row["audit_id"] == row["audit_record_id"]
@@ -710,9 +599,7 @@ async def _exercise_authorization_durable_gate(
     now = datetime.now(UTC)
     private_key = Ed25519PrivateKey.generate()
     key_id = "break-glass-service-integration"
-    grant_id = BreakGlassGrantId(
-        UUID("00000000-0000-7d04-8000-000000002001")
-    )
+    grant_id = BreakGlassGrantId(UUID("00000000-0000-7d04-8000-000000002001"))
     capability = "platform.outbox.retry"
     authentication = AuthenticationContext(
         issuer="https://issuer.example",
@@ -726,24 +613,29 @@ async def _exercise_authorization_durable_gate(
         token_id=None,
         expires_at=now + timedelta(minutes=10),
     )
-    actor = Actor(
-        ACTOR_ID, ActorType.HUMAN, ActorStatus.ACTIVE, "Operator", now, now
-    )
+    actor = Actor(ACTOR_ID, ActorType.HUMAN, ActorStatus.ACTIVE, "Operator", now, now)
     tenant = Tenant(
-        TENANT_ID, "service-evidence", "Service evidence", TenantStatus.ACTIVE,
-        now, now,
+        TENANT_ID,
+        "service-evidence",
+        "Service evidence",
+        TenantStatus.ACTIVE,
+        now,
+        now,
     )
     membership = TenantMembership(
-        TENANT_ID, ACTOR_ID, MembershipStatus.ACTIVE,
-        now - timedelta(minutes=1), None, 0,
+        TENANT_ID,
+        ACTOR_ID,
+        MembershipStatus.ACTIVE,
+        now - timedelta(minutes=1),
+        None,
+        0,
     )
+    assert authentication.acr is not None
     grant = BreakGlassGrant(
         grant_id=grant_id,
         tenant_id=TENANT_ID,
         actor_id=ACTOR_ID,
-        issued_by_actor_id=ActorId(
-            UUID("00000000-0000-7d00-8000-000000002010")
-        ),
+        issued_by_actor_id=ActorId(UUID("00000000-0000-7d00-8000-000000002010")),
         capabilities=(capability,),
         scope=BreakGlassScope(BreakGlassScopeKind.TENANT),
         reason="Controlled recovery approval",
@@ -777,9 +669,7 @@ async def _exercise_authorization_durable_gate(
         async def get_capability_grant(
             self, tenant_id: TenantId, actor_id: ActorId, capability_code: str
         ) -> None:
-            assert (tenant_id, actor_id, capability_code) == (
-                TENANT_ID, ACTOR_ID, capability
-            )
+            assert (tenant_id, actor_id, capability_code) == (TENANT_ID, ACTOR_ID, capability)
             return None  # Normal PDP must DENY before break-glass fallback.
 
         async def list_active_capability_codes(
@@ -796,20 +686,14 @@ async def _exercise_authorization_durable_gate(
             *,
             now: datetime,
         ) -> tuple[BreakGlassGrant, ...]:
-            assert (tenant_id, actor_id, requested_capability) == (
-                TENANT_ID, ACTOR_ID, capability
-            )
+            assert (tenant_id, actor_id, requested_capability) == (TENANT_ID, ACTOR_ID, capability)
             return (grant,)
 
     database = Database(runtime_url)
     signer = Ed25519EvidenceSigner(private_key=private_key, key_id=key_id)
-    verifier = Ed25519EvidenceVerifier(
-        public_keys={key_id: private_key.public_key()}
-    )
+    verifier = Ed25519EvidenceVerifier(public_keys={key_id: private_key.public_key()})
     recorder = DurableBreakGlassActivationRecorder(
-        persistence=PostgresBreakGlassActivationPersistence(
-            PostgresUnitOfWorkFactory(database)
-        ),
+        persistence=PostgresBreakGlassActivationPersistence(PostgresUnitOfWorkFactory(database)),
         signer=signer,
         clock=UtcClock(),
     )
@@ -894,10 +778,7 @@ async def _exercise_authorization_durable_gate(
         try:
             with migration_engine.begin() as connection:
                 connection.execute(
-                    text(
-                        "REVOKE INSERT ON platform.evidence_record "
-                        "FROM coredata_runtime"
-                    )
+                    text("REVOKE INSERT ON platform.evidence_record FROM coredata_runtime")
                 )
         finally:
             migration_engine.dispose()

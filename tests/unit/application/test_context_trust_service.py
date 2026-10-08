@@ -126,22 +126,16 @@ def _service(
     return ContextTrustService(
         authenticator=FakeAuthenticator(),
         repository=repository,
-        break_glass_repository=(
-            break_glass_repository
-            or FakeBreakGlassRepository()
-        ),
+        break_glass_repository=(break_glass_repository or FakeBreakGlassRepository()),
         pdp=CapabilityGrantPdp(),
         environment="test",
         break_glass_activation_recorder=(
-            recorder if recorder is not None
-            else AsyncMock(spec=BreakGlassActivationRecorder)
+            recorder if recorder is not None else AsyncMock(spec=BreakGlassActivationRecorder)
         ),
     )
 
 
-DEFAULT_BREAK_GLASS_GRANT_ID = UUID(
-    "00000000-0000-7000-8000-000000000006"
-)
+DEFAULT_BREAK_GLASS_GRANT_ID = UUID("00000000-0000-7000-8000-000000000006")
 
 
 def _break_glass_grant(
@@ -153,20 +147,9 @@ def _break_glass_grant(
         grant_id=BreakGlassGrantId(grant_id),
         tenant_id=TENANT_ID,
         actor_id=ACTOR_ID,
-        issued_by_actor_id=ActorId(
-            UUID(
-                "00000000-0000-7000-8000-000000000007"
-            )
-        ),
-        capabilities=(
-            "platform.context.read",
-        ),
-        scope=(
-            scope
-            or BreakGlassScope(
-                BreakGlassScopeKind.TENANT
-            )
-        ),
+        issued_by_actor_id=ActorId(UUID("00000000-0000-7000-8000-000000000007")),
+        capabilities=("platform.context.read",),
+        scope=(scope or BreakGlassScope(BreakGlassScopeKind.TENANT)),
         reason="Emergency recovery",
         valid_from=NOW - timedelta(days=1),
         valid_until=NOW + timedelta(days=1),
@@ -327,9 +310,7 @@ def test_invalid_tenant_identifier_is_rejected() -> None:
 def test_normal_allow_does_not_query_break_glass() -> None:
     repository = FakeRepository()
     break_glass_repository = FakeBreakGlassRepository()
-    break_glass_repository.grants = (
-        _break_glass_grant(),
-    )
+    break_glass_repository.grants = (_break_glass_grant(),)
 
     recorder = AsyncMock(spec=BreakGlassActivationRecorder)
     context = asyncio.run(
@@ -355,9 +336,7 @@ def test_break_glass_can_authorize_after_normal_deny() -> None:
     repository.grant = None
 
     break_glass_repository = FakeBreakGlassRepository()
-    break_glass_repository.grants = (
-        _break_glass_grant(),
-    )
+    break_glass_repository.grants = (_break_glass_grant(),)
 
     recorder = AsyncMock(spec=BreakGlassActivationRecorder)
     context = asyncio.run(
@@ -376,12 +355,8 @@ def test_break_glass_can_authorize_after_normal_deny() -> None:
     assert break_glass_repository.calls == 1
     recorder.record.assert_awaited_once_with(context)
     assert context.break_glass is not None
-    assert context.break_glass.capability == (
-        "platform.context.read"
-    )
-    assert context.break_glass.reason == (
-        "Emergency recovery"
-    )
+    assert context.break_glass.capability == ("platform.context.read")
+    assert context.break_glass.reason == ("Emergency recovery")
 
 
 def test_break_glass_evaluates_candidates_until_allow() -> None:
@@ -396,9 +371,7 @@ def test_break_glass_evaluates_candidates_until_allow() -> None:
             resource_type="outbox-message",
             resource_id="message-other",
         ),
-        grant_id=UUID(
-            "00000000-0000-7000-8000-000000000008"
-        ),
+        grant_id=UUID("00000000-0000-7000-8000-000000000008"),
     )
 
     exact_scope = _break_glass_grant(
@@ -407,9 +380,7 @@ def test_break_glass_evaluates_candidates_until_allow() -> None:
             resource_type="outbox-message",
             resource_id="message-1",
         ),
-        grant_id=UUID(
-            "00000000-0000-7000-8000-000000000009"
-        ),
+        grant_id=UUID("00000000-0000-7000-8000-000000000009"),
     )
 
     break_glass_repository.grants = (
@@ -432,13 +403,8 @@ def test_break_glass_evaluates_candidates_until_allow() -> None:
     )
 
     assert context.break_glass is not None
-    assert (
-        context.break_glass.grant_id
-        == exact_scope.grant_id
-    )
-    assert context.break_glass.scope.resource_id == (
-        "message-1"
-    )
+    assert context.break_glass.grant_id == exact_scope.grant_id
+    assert context.break_glass.scope.resource_id == ("message-1")
 
 
 def test_break_glass_deny_preserves_default_deny() -> None:
@@ -457,9 +423,7 @@ def test_break_glass_deny_preserves_default_deny() -> None:
     )
 
     recorder = AsyncMock(spec=BreakGlassActivationRecorder)
-    with pytest.raises(
-        AuthorizationError
-    ) as caught:
+    with pytest.raises(AuthorizationError) as caught:
         asyncio.run(
             _service(
                 repository,
@@ -475,9 +439,7 @@ def test_break_glass_deny_preserves_default_deny() -> None:
             )
         )
 
-    assert caught.value.code == (
-        "AUTHZ.CAPABILITY.DENIED"
-    )
+    assert caught.value.code == ("AUTHZ.CAPABILITY.DENIED")
     assert break_glass_repository.calls == 1
     recorder.record.assert_not_awaited()
 

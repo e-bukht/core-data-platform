@@ -40,24 +40,12 @@ from tests.test_platform.assertions import (
 )
 from tests.test_platform.postgres import CertificationPostgres
 
-TENANT_ID = TenantId(
-    UUID("00000000-0000-7000-8000-00000000c301")
-)
-ACTOR_ID = ActorId(
-    UUID("00000000-0000-7000-8000-00000000c302")
-)
-TRANSACTION_ID = TransactionId(
-    UUID("00000000-0000-7000-8000-00000000c303")
-)
-CORRELATION_ID = CorrelationId(
-    UUID("00000000-0000-7000-8000-00000000c304")
-)
-AUDIT_ID = AuditRecordId(
-    UUID("00000000-0000-7000-8000-00000000c305")
-)
-EVIDENCE_ID = EvidenceRecordId(
-    UUID("00000000-0000-7000-8000-00000000c306")
-)
+TENANT_ID = TenantId(UUID("00000000-0000-7000-8000-00000000c301"))
+ACTOR_ID = ActorId(UUID("00000000-0000-7000-8000-00000000c302"))
+TRANSACTION_ID = TransactionId(UUID("00000000-0000-7000-8000-00000000c303"))
+CORRELATION_ID = CorrelationId(UUID("00000000-0000-7000-8000-00000000c304"))
+AUDIT_ID = AuditRecordId(UUID("00000000-0000-7000-8000-00000000c305"))
+EVIDENCE_ID = EvidenceRecordId(UUID("00000000-0000-7000-8000-00000000c306"))
 
 NOW = datetime(
     2026,
@@ -197,9 +185,7 @@ async def _persist_and_assert(
         audit,
     )
 
-    factory = PostgresUnitOfWorkFactory(
-        postgres.database
-    )
+    factory = PostgresUnitOfWorkFactory(postgres.database)
 
     uow = factory.create(context)
 
@@ -230,8 +216,4 @@ def test_reusable_audit_and_evidence_assertions(
 ) -> None:
     _seed_principals(cert_postgres)
 
-    asyncio.run(
-        _persist_and_assert(
-            cert_postgres
-        )
-    )
+    asyncio.run(_persist_and_assert(cert_postgres))

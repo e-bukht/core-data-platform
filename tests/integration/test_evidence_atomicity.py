@@ -44,15 +44,9 @@ from tests.integration.db_support import (
     run_alembic,
 )
 
-TENANT_ID = TenantId(
-    UUID("00000000-0000-7700-8000-000000001001")
-)
-ACTOR_ID = ActorId(
-    UUID("00000000-0000-7700-8000-000000001002")
-)
-CORRELATION_ID = CorrelationId(
-    UUID("00000000-0000-7700-8000-000000001003")
-)
+TENANT_ID = TenantId(UUID("00000000-0000-7700-8000-000000001001"))
+ACTOR_ID = ActorId(UUID("00000000-0000-7700-8000-000000001002"))
+CORRELATION_ID = CorrelationId(UUID("00000000-0000-7700-8000-000000001003"))
 
 OCCURRED_AT = datetime(
     2026,
@@ -68,13 +62,9 @@ def _run(
     coro: Coroutine[Any, Any, None],
 ) -> None:
     def loop_factory() -> asyncio.AbstractEventLoop:
-        return asyncio.SelectorEventLoop(
-            selectors.SelectSelector()
-        )
+        return asyncio.SelectorEventLoop(selectors.SelectSelector())
 
-    with asyncio.Runner(
-        loop_factory=loop_factory
-    ) as runner:
+    with asyncio.Runner(loop_factory=loop_factory) as runner:
         runner.run(coro)
 
 
@@ -130,11 +120,7 @@ def _context(
     suffix: int,
 ) -> TransactionContext:
     return TransactionContext(
-        transaction_id=TransactionId(
-            UUID(
-                f"00000000-0000-7701-8000-{suffix:012d}"
-            )
-        ),
+        transaction_id=TransactionId(UUID(f"00000000-0000-7701-8000-{suffix:012d}")),
         tenant_id=TENANT_ID,
         actor_id=ACTOR_ID,
         correlation_id=CORRELATION_ID,
@@ -149,11 +135,7 @@ def _audit(
     suffix: int,
 ) -> AuditRecord:
     return AuditRecord(
-        record_id=AuditRecordId(
-            UUID(
-                f"00000000-0000-7702-8000-{suffix:012d}"
-            )
-        ),
+        record_id=AuditRecordId(UUID(f"00000000-0000-7702-8000-{suffix:012d}")),
         tenant_id=context.tenant_id,
         transaction_id=context.transaction_id,
         actor_id=context.actor_id,
@@ -177,9 +159,7 @@ def _evidence(
     suffix: int,
 ) -> EvidenceRecord:
     payload = {
-        "audit_record_id": str(
-            audit.record_id.value
-        ),
+        "audit_record_id": str(audit.record_id.value),
         "outcome": audit.outcome.value,
         "resource_id": audit.resource_id,
     }
@@ -187,11 +167,7 @@ def _evidence(
     return EvidenceRecord(
         envelope=EvidenceEnvelope(
             envelope_version=1,
-            record_id=EvidenceRecordId(
-                UUID(
-                    f"00000000-0000-7703-8000-{suffix:012d}"
-                )
-            ),
+            record_id=EvidenceRecordId(UUID(f"00000000-0000-7703-8000-{suffix:012d}")),
             tenant_id=context.tenant_id,
             audit_record_id=audit.record_id.value,
             transaction_id=context.transaction_id.value,
@@ -215,9 +191,7 @@ async def _counts(
     audit_id: AuditRecordId,
     evidence_id: EvidenceRecordId,
 ) -> tuple[int, int]:
-    async with database.tenant_transaction(
-        TENANT_ID.value
-    ) as connection:
+    async with database.tenant_transaction(TENANT_ID.value) as connection:
         audit_count = await connection.scalar(
             text(
                 """
@@ -275,20 +249,14 @@ async def _exercise(
         assert isinstance(uow, PostgresUnitOfWork)
 
         async with uow as active:
-            await active.audit.append(
-                committed_audit
-            )
-            await active.evidence.append(
-                committed_evidence
-            )
+            await active.audit.append(committed_audit)
+            await active.evidence.append(committed_evidence)
             await active.commit()
 
         assert await _counts(
             database,
             audit_id=committed_audit.record_id,
-            evidence_id=(
-                committed_evidence.envelope.record_id
-            ),
+            evidence_id=(committed_evidence.envelope.record_id),
         ) == (1, 1)
 
         # ------------------------------------------------------
@@ -309,20 +277,14 @@ async def _exercise(
         assert isinstance(uow, PostgresUnitOfWork)
 
         async with uow as active:
-            await active.audit.append(
-                rollback_audit
-            )
-            await active.evidence.append(
-                rollback_evidence
-            )
+            await active.audit.append(rollback_audit)
+            await active.evidence.append(rollback_evidence)
             # No explicit commit.
 
         assert await _counts(
             database,
             audit_id=rollback_audit.record_id,
-            evidence_id=(
-                rollback_evidence.envelope.record_id
-            ),
+            evidence_id=(rollback_evidence.envelope.record_id),
         ) == (0, 0)
 
         # ------------------------------------------------------
@@ -343,9 +305,7 @@ async def _exercise(
             valid_evidence,
             envelope=replace(
                 valid_evidence.envelope,
-                audit_record_id=UUID(
-                    "00000000-0000-7702-8000-000000009999"
-                ),
+                audit_record_id=UUID("00000000-0000-7702-8000-000000009999"),
             ),
         )
 
@@ -354,20 +314,14 @@ async def _exercise(
 
         with pytest.raises(IntegrityError):
             async with uow as active:
-                await active.audit.append(
-                    failure_audit
-                )
-                await active.evidence.append(
-                    broken_evidence
-                )
+                await active.audit.append(failure_audit)
+                await active.evidence.append(broken_evidence)
                 await active.commit()
 
         assert await _counts(
             database,
             audit_id=failure_audit.record_id,
-            evidence_id=(
-                broken_evidence.envelope.record_id
-            ),
+            evidence_id=(broken_evidence.envelope.record_id),
         ) == (0, 0)
 
     finally:
@@ -387,9 +341,7 @@ def test_audit_and_evidence_share_atomic_uow(
     image: str,
 ) -> None:
     with PostgresContainer(image) as postgres:
-        migration_url, runtime_url = provision_roles(
-            admin_url(postgres)
-        )
+        migration_url, runtime_url = provision_roles(admin_url(postgres))
 
         run_alembic(
             migration_url,
@@ -398,6 +350,4 @@ def test_audit_and_evidence_share_atomic_uow(
 
         _seed(migration_url)
 
-        _run(
-            _exercise(runtime_url)
-        )
+        _run(_exercise(runtime_url))

@@ -245,9 +245,7 @@ def _engines(
     image: str,
 ) -> Iterator[tuple[Engine, Engine]]:
     with PostgresContainer(image) as postgres:
-        migration_url, runtime_url = provision_roles(
-            admin_url(postgres)
-        )
+        migration_url, runtime_url = provision_roles(admin_url(postgres))
 
         run_alembic(
             migration_url,
@@ -353,10 +351,7 @@ def test_evidence_schema_is_tenant_safe_and_append_only(
         assert table_state["relrowsecurity"] is True
         assert table_state["relforcerowsecurity"] is True
 
-        assert (
-            "fk_evidence_record_audit_context"
-            in constraint_names
-        )
+        assert "fk_evidence_record_audit_context" in constraint_names
         assert privileges["read_insert"] is True
         assert privileges["can_update"] is False
         assert privileges["can_delete"] is False
@@ -411,9 +406,7 @@ def test_evidence_schema_is_tenant_safe_and_append_only(
                 ).scalars()
             )
 
-        assert {str(value) for value in visible_ids} == {
-            EVIDENCE_A
-        }
+        assert {str(value) for value in visible_ids} == {EVIDENCE_A}
 
         with runtime_engine.begin() as connection:
             _set_tenant(connection, TENANT_B)
@@ -429,20 +422,14 @@ def test_evidence_schema_is_tenant_safe_and_append_only(
                 ).scalars()
             )
 
-        assert {str(value) for value in visible_ids} == {
-            EVIDENCE_B
-        }
+        assert {str(value) for value in visible_ids} == {EVIDENCE_B}
 
-        with pytest.raises(
-            DBAPIError
-        ), runtime_engine.begin() as connection:
+        with pytest.raises(DBAPIError), runtime_engine.begin() as connection:
             _set_tenant(connection, TENANT_A)
 
             _insert_evidence(
                 connection,
-                evidence_id=(
-                    "00000000-0000-7400-8000-000000001061"
-                ),
+                evidence_id=("00000000-0000-7400-8000-000000001061"),
                 tenant_id=TENANT_B,
                 audit_id=AUDIT_B,
                 transaction_id=TRANSACTION_B,
@@ -452,32 +439,28 @@ def test_evidence_schema_is_tenant_safe_and_append_only(
 
         mismatches = (
             {
-                "evidence_id":
-                    "00000000-0000-7400-8000-000000001062",
+                "evidence_id": "00000000-0000-7400-8000-000000001062",
                 "audit_id": AUDIT_B,
                 "transaction_id": TRANSACTION_B,
                 "actor_id": ACTOR_B,
                 "correlation_id": CORRELATION_B,
             },
             {
-                "evidence_id":
-                    "00000000-0000-7400-8000-000000001063",
+                "evidence_id": "00000000-0000-7400-8000-000000001063",
                 "audit_id": AUDIT_A,
                 "transaction_id": TRANSACTION_B,
                 "actor_id": ACTOR_A,
                 "correlation_id": CORRELATION_A,
             },
             {
-                "evidence_id":
-                    "00000000-0000-7400-8000-000000001064",
+                "evidence_id": "00000000-0000-7400-8000-000000001064",
                 "audit_id": AUDIT_A,
                 "transaction_id": TRANSACTION_A,
                 "actor_id": ACTOR_B,
                 "correlation_id": CORRELATION_A,
             },
             {
-                "evidence_id":
-                    "00000000-0000-7400-8000-000000001065",
+                "evidence_id": "00000000-0000-7400-8000-000000001065",
                 "audit_id": AUDIT_A,
                 "transaction_id": TRANSACTION_A,
                 "actor_id": ACTOR_A,
@@ -486,9 +469,7 @@ def test_evidence_schema_is_tenant_safe_and_append_only(
         )
 
         for mismatch in mismatches:
-            with pytest.raises(
-                IntegrityError
-            ), runtime_engine.begin() as connection:
+            with pytest.raises(IntegrityError), runtime_engine.begin() as connection:
                 _set_tenant(connection, TENANT_A)
 
                 _insert_evidence(
@@ -497,9 +478,7 @@ def test_evidence_schema_is_tenant_safe_and_append_only(
                     **mismatch,
                 )
 
-        with pytest.raises(
-            DBAPIError
-        ), migration_engine.begin() as connection:
+        with pytest.raises(DBAPIError), migration_engine.begin() as connection:
             _set_tenant(connection, TENANT_A)
 
             connection.execute(
@@ -514,9 +493,7 @@ def test_evidence_schema_is_tenant_safe_and_append_only(
                 {"evidence_id": EVIDENCE_A},
             )
 
-        with pytest.raises(
-            DBAPIError
-        ), migration_engine.begin() as connection:
+        with pytest.raises(DBAPIError), migration_engine.begin() as connection:
             _set_tenant(connection, TENANT_A)
 
             connection.execute(

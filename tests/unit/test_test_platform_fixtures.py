@@ -39,14 +39,13 @@ def test_certification_kernel_fixtures_are_consistent(
     assert cert_execution_context.actor_id == cert_actor.actor_id
     assert cert_execution_context.authentication == cert_authentication
 
+
 def test_certification_identity_provider_uses_real_oidc_authentication(
     cert_identity_provider: CertificationIdentityProvider,
 ) -> None:
     token = cert_identity_provider.issue_token()
 
-    context = asyncio.run(
-        cert_identity_provider.authenticate(token)
-    )
+    context = asyncio.run(cert_identity_provider.authenticate(token))
 
     assert context.issuer == cert_identity_provider.issuer
     assert context.subject == "certification-actor"

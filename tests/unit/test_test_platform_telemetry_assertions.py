@@ -13,9 +13,7 @@ from tests.test_platform.telemetry_assertions import (
 
 TRACE_ID_HEX = "0123456789abcdef0123456789abcdef"
 PARENT_SPAN_ID_HEX = "0123456789abcdef"
-TRACEPARENT = (
-    f"00-{TRACE_ID_HEX}-{PARENT_SPAN_ID_HEX}-01"
-)
+TRACEPARENT = f"00-{TRACE_ID_HEX}-{PARENT_SPAN_ID_HEX}-01"
 
 
 def _capture_correlated_spans(
@@ -25,9 +23,7 @@ def _capture_correlated_spans(
 
     assert tracer_provider is not None
 
-    tracer = tracer_provider.get_tracer(
-        "core-platform-certification-correlation"
-    )
+    tracer = tracer_provider.get_tracer("core-platform-certification-correlation")
 
     parent_context = TraceContextTextMapPropagator().extract(
         {
@@ -35,29 +31,28 @@ def _capture_correlated_spans(
         }
     )
 
-    with tracer.start_as_current_span(
-        "certification.http",
-        context=parent_context,
-        kind=SpanKind.SERVER,
-    ), tracer.start_as_current_span(
-        "certification.postgresql",
-        kind=SpanKind.CLIENT,
+    with (
+        tracer.start_as_current_span(
+            "certification.http",
+            context=parent_context,
+            kind=SpanKind.SERVER,
+        ),
+        tracer.start_as_current_span(
+            "certification.postgresql",
+            kind=SpanKind.CLIENT,
+        ),
     ):
         pass
 
     assert tracer_provider.force_flush()
 
-    return tuple(
-        collector.span_exporter.get_finished_spans()
-    )
+    return tuple(collector.span_exporter.get_finished_spans())
 
 
 def test_reusable_trace_correlation_assertion(
     cert_telemetry_collector: CertificationTelemetryCollector,
 ) -> None:
-    spans = _capture_correlated_spans(
-        cert_telemetry_collector
-    )
+    spans = _capture_correlated_spans(cert_telemetry_collector)
 
     assert_trace_correlation(
         spans,
@@ -72,9 +67,7 @@ def test_reusable_trace_correlation_assertion(
 def test_trace_correlation_assertion_rejects_wrong_trace(
     cert_telemetry_collector: CertificationTelemetryCollector,
 ) -> None:
-    spans = _capture_correlated_spans(
-        cert_telemetry_collector
-    )
+    spans = _capture_correlated_spans(cert_telemetry_collector)
 
     with pytest.raises(
         AssertionError,

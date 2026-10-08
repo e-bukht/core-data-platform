@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 from datetime import UTC, datetime
 from uuid import UUID
@@ -21,18 +21,10 @@ class _Database:
 
 def _context() -> TransactionContext:
     return TransactionContext(
-        transaction_id=TransactionId(
-            UUID("00000000-0000-7000-8000-000000000010")
-        ),
-        tenant_id=TenantId(
-            UUID("00000000-0000-7000-8000-000000000011")
-        ),
-        actor_id=ActorId(
-            UUID("00000000-0000-7000-8000-000000000012")
-        ),
-        correlation_id=CorrelationId(
-            UUID("00000000-0000-7000-8000-000000000013")
-        ),
+        transaction_id=TransactionId(UUID("00000000-0000-7000-8000-000000000010")),
+        tenant_id=TenantId(UUID("00000000-0000-7000-8000-000000000011")),
+        actor_id=ActorId(UUID("00000000-0000-7000-8000-000000000012")),
+        correlation_id=CorrelationId(UUID("00000000-0000-7000-8000-000000000013")),
         operation="security.break-glass.suspend",
         capability="platform.break-glass.manage",
         started_at=datetime(

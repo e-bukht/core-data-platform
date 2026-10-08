@@ -29,11 +29,7 @@ class SecretValue:
         self,
         value: str | bytes,
     ) -> None:
-        raw = (
-            value.encode("utf-8")
-            if isinstance(value, str)
-            else bytes(value)
-        )
+        raw = value.encode("utf-8") if isinstance(value, str) else bytes(value)
 
         if not raw:
             raise ValueError("Secret value must not be empty")
