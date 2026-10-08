@@ -36,6 +36,9 @@ def _job_block(workflow: str, job_name: str) -> str:
 
 def test_release_runs_only_after_certification_with_isolated_privileges() -> None:
     workflow = _workflow_text()
+    setup_uv_pin = "astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0"
+    assert "astral-sh/setup-uv@v10" not in workflow
+    assert workflow.count(setup_uv_pin) == 5
 
     top_level_permissions = """permissions:
   contents: read
