@@ -101,6 +101,11 @@ def main() -> None:
             )
         )
         cursor.execute("REVOKE CREATE ON SCHEMA public FROM PUBLIC")
+        cursor.execute(
+            sql.SQL("GRANT USAGE, CREATE ON SCHEMA public TO {}").format(
+                sql.Identifier(migrator_role)
+            )
+        )
 
     print(f"Database roles ready: migrator={migrator_role}, runtime={runtime_role}")
 
