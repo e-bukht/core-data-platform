@@ -480,45 +480,83 @@ implementation dependency makes a minimal adapter necessary.
 - I4.9 TestResource full Phase 0 E2E certification
 - I4.10 Final quality, security and Phase 0 Go/No-Go seal
 
-### C-I4-15 local certification evidence
+### C-I4-15 supply-chain certification evidence
 
-C-I4-15 supply-chain implementation is locally certified, while remote
-GitHub Actions / Sigstore execution evidence remains required before the
-criterion can be closed:
+C-I4-15 is certified against implementation commit
+`155f443d732df1d3828edfa0fc9f6f94e2492c07` and GitHub Actions run
+`37853438069`.
 
-- the tracked CI certification job depends on quality, PostgreSQL matrix and
-  tenant-isolation gates;
-- the privileged release job executes only for pushes to `main` and only after
-  certification succeeds;
-- privileged OIDC / attestation permissions are isolated to the release job;
-- the release source is bound to `github.sha` and the checked-out commit is
-  explicitly verified before build;
-- the wheel artifact name is versioned and commit-addressable;
-- a CycloneDX 1.5 runtime SBOM is generated and bound to the release artifact
-  through the release manifest and SHA-256 digests;
-- build provenance and SBOM attestations use `actions/attest@v4.2.2`;
-- attestation verification constrains source digest, signer digest, source
-  branch, signer workflow and CycloneDX predicate type;
-- the built wheel is smoke-tested before the immutable release bundle is
-  uploaded with overwrite disabled;
-- automated architecture fitness tests lock the release trust boundary,
-  ordering, commit binding, SBOM binding, attestation and upload invariants;
-- deterministic local release proof successfully built and imported
-  `core_data_platform-0.2.0-py3-none-any.whl`, verified version/commit,
-  wheel/SBOM hash bindings and `SHA256SUMS`, then cleaned all proof output;
-- global certification gates are green: 330 pytest tests pass with two
-  warnings, Ruff passes, mypy passes for 108 source files and the supply-chain
-  fitness test, Import Linter keeps all four contracts with zero broken
-  contracts, all 11 architecture fitness tests pass, and Alembic reports
-  `0006_bg_manage_capability (head)`.
+The certified release pipeline proves that:
 
-No Git remote is configured in the local repository. Therefore no remote CI
-run, GitHub artifact upload, Sigstore attestation issuance or remote
-`gh attestation verify` execution is claimed as evidence.
+- the certification job depends on the quality, PostgreSQL compatibility and
+  tenant-isolation gates, and the privileged release job executes only for
+  successful pushes to `main`;
+- OIDC, attestation and artifact-metadata write permissions are isolated to the
+  release job;
+- every external GitHub Action reference in the workflow is pinned to a
+  full-length immutable commit SHA;
+- the release source is bound to `github.sha`, the checked-out commit is
+  explicitly verified, and the release artifact name contains both version
+  `0.2.0` and source commit
+  `155f443d732df1d3828edfa0fc9f6f94e2492c07`;
+- the quality job generates runtime and full CycloneDX 1.5 SBOMs and uploads
+  them fail-closed as the non-empty `sbom` artifact;
+- the release job generates a CycloneDX 1.5 runtime SBOM and binds it to the
+  wheel through the release manifest and SHA-256 digests;
+- build provenance and CycloneDX SBOM attestations are issued through GitHub
+  OIDC / Sigstore and preserved in the immutable release bundle;
+- attestation verification constrains source repository, source digest, source
+  branch, signer workflow, signer digest, predicate type and GitHub-hosted
+  runner environment;
+- the exact built wheel is smoke-tested before immutable artifact upload, with
+  overwrite disabled and missing release files treated as errors.
 
-C-I4-15 remains NOT CLOSED pending remote execution evidence for the certified
-workflow and the resulting commit-addressable artifact, SBOM and verifiable
-attestations.
+Remote execution evidence:
+
+- GitHub Actions run `37853438069` executed for exact head SHA
+  `155f443d732df1d3828edfa0fc9f6f94e2492c07`;
+- all six jobs succeeded: `quality`, `postgres-matrix (12.22)`,
+  `postgres-matrix (18)`, `tenant-isolation`, `certification` and `release`;
+- the run published exactly the expected quality SBOM artifact and
+  commit-addressable release artifact
+  `core-data-platform-0.2.0-155f443d732df1d3828edfa0fc9f6f94e2492c07`;
+- the quality SBOM artifact contains runtime and full CycloneDX 1.5 documents
+  with 56 and 96 components respectively;
+- the release bundle contains exactly the wheel, runtime SBOM, release
+  manifest, `SHA256SUMS`, provenance Sigstore bundle and SBOM Sigstore bundle;
+- manifest version, source commit, wheel digest and SBOM digest bindings were
+  independently reverified after downloading the published artifact;
+- `SHA256SUMS` contains exactly the wheel, runtime SBOM and release manifest
+  digests;
+- the released wheel SHA-256 is
+  `ae985b4672713773e5b7cc5abfd3b88f867ec6812c6cae025f90a07c149cf5f2`;
+- both downloaded Sigstore bundles pass cryptographic verification, bind the
+  exact wheel digest, contain signing-certificate evidence and have trusted
+  timestamp evidence;
+- online `gh attestation verify` independently validates both SLSA provenance
+  and CycloneDX SBOM attestations against the exact source/signer commit,
+  `refs/heads/main`, `.github/workflows/ci.yml`, GitHub OIDC issuer and
+  GitHub-hosted runner policy.
+
+Final local regression before publication of the hardening commit is green:
+
+- strict workflow YAML parsing passes;
+- Ruff formatting passes for all 236 files and Ruff lint passes;
+- mypy passes for all 209 checked source/test files;
+- all 330 pytest tests pass with two dependency deprecation warnings;
+- Import Linter analyzes 145 files / 515 dependencies and keeps all four
+  architecture contracts with zero broken contracts;
+- `pip-audit` reports no known vulnerabilities for auditable dependencies and
+  Bandit passes;
+- all 11 architecture fitness tests pass;
+- Alembic reports `0006_bg_manage_capability (head)`;
+- `uv lock --check` passes;
+- the historical `p0-i4-certified` tag remains unchanged.
+
+C-I4-15 therefore has automated local and remote evidence for an immutable,
+commit-addressable release artifact, associated CycloneDX SBOMs, and verifiable
+SLSA provenance / SBOM attestations after all required quality, security,
+architecture, database and certification gates pass.
 ## 10. Immediate NO-GO conditions
 
 P0-I4 cannot be certified if any of the following remains:
