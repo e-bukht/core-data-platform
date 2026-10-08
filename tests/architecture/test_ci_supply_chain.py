@@ -34,6 +34,39 @@ def test_release_runs_only_after_certification_with_isolated_privileges() -> Non
     workflow = _workflow_text()
     setup_uv_pin = "astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0"
     assert "astral-sh/setup-uv@v10" not in workflow
+
+    expected_action_pins = {
+        "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1": 5,
+        "actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0": 5,
+        "astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0": 5,
+        "actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2": 2,
+        "actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0": 2,
+    }
+    for action_pin, expected_count in expected_action_pins.items():
+        assert workflow.count(action_pin) == expected_count
+
+    action_references = [
+        line.split("uses:", 1)[1].strip().split(" #", 1)[0]
+        for line in workflow.splitlines()
+        if line.lstrip().startswith(("uses:", "- uses:"))
+    ]
+    assert len(action_references) == 19
+    for reference in action_references:
+        _, separator, revision = reference.rpartition("@")
+        assert separator == "@"
+        assert len(revision) == 40
+        assert all(character in "0123456789abcdef" for character in revision.lower())
+
+    assert workflow.count("--preview-features sbom-export") == 3
+    quality_sbom_upload = "\n".join(
+        [
+            "          name: sbom",
+            "          path: .sbom/*.json",
+            "          if-no-files-found: error",
+            "          include-hidden-files: true",
+        ]
+    )
+    assert quality_sbom_upload in workflow
     assert workflow.count(setup_uv_pin) == 5
 
     top_level_permissions = """permissions:
@@ -97,7 +130,7 @@ def test_release_artifact_is_commit_bound_sbom_bound_and_attested() -> None:
         '"source_commit": os.environ["SOURCE_SHA"]',
         '"sha256": os.environ["WHEEL_SHA256"]',
         '"sha256": os.environ["SBOM_SHA256"]',
-        "actions/attest@v4.2.2",
+        "actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2",
         "sbom-path: .release/runtime.cdx.json",
         '--source-digest "$SOURCE_SHA"',
         '--signer-digest "$SOURCE_SHA"',
